@@ -228,11 +228,8 @@
                             
                             {authError && (
                                 <div className="bg-red-500/10 border border-red-500 text-red-200 p-4 rounded-xl mb-6 text-left text-sm">
-                                    <p className="font-bold">⚠️ Connection Error (Server Blocked)</p>
-                                    <p className="opacity-80 mt-1">
-                                        Google Cloud บล็อกการเชื่อมต่อจากหน้า Preview นี้เนื่องจากคุณตั้งค่าจำกัด Domain ไว้<br/>
-                                        <span className="text-yellow-300 font-bold">วิธีแก้:</span> ไปที่ Google Cloud Console > Credentials > API Key > Application restrictions > เลือก "None" ชั่วคราว
-                                    </p>
+                                    <p className="font-bold">⚠️ Connection Error</p>
+                                    <p className="opacity-80 mt-1">{authError}</p>
                                 </div>
                             )}
 
@@ -434,7 +431,7 @@
                             {/* ERROR DISPLAY */}
                             {authError ? (
                                 <button 
-                                    onClick={() => alert("ข้อผิดพลาดจากระบบ (Auth Error):\n" + authError + "\n\nคำแนะนำ: ตรวจสอบการตั้งค่า API Key Restrictions ใน Google Cloud Console (ต้องเพิ่ม URL ของ GitHub Pages ให้ถูกต้อง หรือปิด Restrictions ชั่วคราว)")}
+                                    onClick={() => alert("ข้อผิดพลาดจากระบบ (Auth Error):\n" + authError)}
                                     className="w-full bg-red-500 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-red-600 animate-pulse"
                                 >
                                     ⚠️ เชื่อมต่อไม่ได้ (คลิกดูสาเหตุ)
@@ -543,6 +540,8 @@
                         // Check for referer blocked error
                         if (err.message.includes("requests-from-referer")) {
                             setAuthError("API Key ถูกจำกัดสิทธิ์ (Domain Restricted). โดเมนของหน้าเว็บนี้ไม่ได้รับอนุญาต");
+                        } else if (err.message.includes("configuration-not-found") || err.code === "auth/configuration-not-found") {
+                            setAuthError("ยังไม่ได้เปิดใช้งาน Anonymous Auth ใน Firebase Console (เมนู Authentication > Sign-in method > เปิด Anonymous)");
                         } else {
                             setAuthError(err.message);
                         }
@@ -575,8 +574,7 @@
                             <p className="font-bold mb-2">⚠️ เกิดข้อผิดพลาดการเชื่อมต่อ (Connection Error)</p>
                             <p className="mb-2">{authError}</p>
                             <p className="text-xs opacity-80">
-                                <strong>สาเหตุ:</strong> คุณอาจตั้งค่าจำกัด Domain ใน Google Cloud Console ไว้ ทำให้หน้า Preview นี้ใช้งานไม่ได้<br/>
-                                <strong>วิธีแก้:</strong> ไปที่ Google Cloud Console > APIs & Services > Credentials > แก้ไข API Key > เพิ่มโดเมนของหน้านี้ หรือเอาติ๊กถูกช่อง "Website restrictions" ออกชั่วคราว
+                                <strong>คำแนะนำ:</strong> กรุณาตรวจสอบการตั้งค่า Firebase Console ตามข้อความแจ้งเตือนด้านบน
                             </p>
                         </div>
                     )}
