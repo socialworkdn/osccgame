@@ -3,81 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OSCC Live Game & Dashboard</title>
+    <title>OSCC Live Classroom</title>
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     
-    <!-- Tailwind CSS -->
+    <!-- Styles -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- React & ReactDOM -->
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #f0f2f5; overflow-x: hidden; }
+        .animate-bounce-short { animation: bounce 0.5s infinite alternate; }
+        @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-5px); } }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* Timer Bar Animation */
+        .timer-progress { transition: width 1s linear; }
+    </style>
+
+    <!-- React & Firebase -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <!-- Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-
-    <!-- Firebase SDKs (Compat Version for Standalone Usage) -->
+    
+    <!-- Firebase Compat SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-
-    <style>
-        body { font-family: 'Sarabun', sans-serif; background-color: #f0f2f5; }
-        .animate-pop { animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        @keyframes pop { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-    </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
         // ==========================================
-        // ส่วนตั้งค่า Firebase (สำคัญมากสำหรับการนำไปใช้เอง)
+        // 1. CONFIGURATION
         // ==========================================
         
-        // 1. ไปที่ https://console.firebase.google.com/
-        // 2. สร้างโปรเจกต์ > เพิ่มแอป Web (</>) > คัดลอก config มาใส่แทนที่ null ด้านล่างนี้
+        // Config ของคุณ
         const YOUR_FIREBASE_CONFIG = {
-  apiKey: "AIzaSyAdXrEJVOU8zHtnCjd0tnCT0Gg9ZIioYeE",
-  authDomain: "oscc-quiz.firebaseapp.com",
-  projectId: "oscc-quiz",
-  storageBucket: "oscc-quiz.firebasestorage.app",
-  messagingSenderId: "246513256530",
-  appId: "1:246513256530:web:ba60ab8ec6c8f2a1d4f78b",
-  measurementId: "G-EV1HQLEGRE"
-}; 
-        
-        // ------------------------------------------
-        // Logic การเลือกใช้ Config (ไม่ต้องแก้ไขส่วนนี้)
-        let firebaseConfig;
-        if (typeof __firebase_config !== 'undefined') {
-            firebaseConfig = JSON.parse(__firebase_config); // ใช้ค่าจากระบบ Preview
-        } else if (YOUR_FIREBASE_CONFIG) {
-            firebaseConfig = YOUR_FIREBASE_CONFIG; // ใช้ค่าที่คุณใส่เอง
-        } else {
-            alert("⚠️ ไม่พบการตั้งค่า Firebase!\nกรุณาเปิดไฟล์และแก้ไขตัวแปร 'YOUR_FIREBASE_CONFIG' ก่อนใช้งาน");
-            throw new Error("Firebase Config missing");
-        }
-        
+          apiKey: "AIzaSyAdXrEJVOU8zHtnCjd0tnCT0Gg9ZIioYeE",
+          authDomain: "oscc-quiz.firebaseapp.com",
+          projectId: "oscc-quiz",
+          storageBucket: "oscc-quiz.firebasestorage.app",
+          messagingSenderId: "246513256530",
+          appId: "1:246513256530:web:ba60ab8ec6c8f2a1d4f78b",
+          measurementId: "G-EV1HQLEGRE"
+        };
+
         // Initialize Firebase
         if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
+            firebase.initializeApp(YOUR_FIREBASE_CONFIG);
         }
         
         const auth = firebase.auth();
         const db = firebase.firestore();
-        // ใช้ projectId เป็น appId ถ้าไม่มีการกำหนดค่า __app_id
-        const appId = typeof __app_id !== 'undefined' ? __app_id : (firebaseConfig.projectId || 'default-oscc-app');
+        const appId = 'oscc-quiz-room-v1'; 
 
-        // Helper to get collection reference easily
-        const getScoresCollection = () => {
-            // ใช้ Path มาตรฐานสำหรับเก็บข้อมูล
-            return db.collection('oscc_quiz_scores');
-        };
-        // ==========================================
+        // Database References
+        const getGameStateRef = () => db.collection('artifacts').doc(appId).collection('public').doc('data').collection('state').doc('current');
+        const getPlayersRef = () => db.collection('artifacts').doc(appId).collection('public').doc('data').collection('players');
 
         // Questions Data
         const QUESTIONS = [
@@ -93,322 +78,426 @@
             { q: "สโลแกนสำคัญคือ?", a: ["ไม่ยุ่งเรื่องชาวบ้าน", "ไม่ยอมรับ ไม่นิ่งเฉย ไม่กระทำ", "รักวัวให้ผูก รักลูกให้ตี", "ตาต่อตา ฟันต่อฟัน"], c: 1 }
         ];
 
-        // --- 2. REACT COMPONENTS ---
-
-        const MainMenu = ({ setMode }) => (
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-400 to-rose-500 p-4">
-                <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl animate-pop">
-                    <div className="w-24 h-24 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-6 text-rose-500 text-4xl shadow-inner">
-                        <i className="fa-solid fa-heart-pulse"></i>
-                    </div>
-                    <h1 className="text-3xl font-bold text-gray-800 mb-2">OSCC Live Quiz</h1>
-                    <p className="text-gray-500 mb-8">โรงพยาบาลดำเนินสะดวก</p>
-
-                    <button onClick={() => setMode('student')} className="w-full bg-rose-500 hover:bg-rose-600 text-white font-bold py-4 rounded-xl text-xl mb-4 shadow-lg transform transition active:scale-95 flex items-center justify-center gap-3">
-                        <i className="fa-solid fa-user-graduate"></i> เข้าเล่นเกม (นักเรียน)
-                    </button>
-                    
-                    <button onClick={() => setMode('teacher')} className="w-full bg-white border-2 border-rose-200 text-rose-500 hover:bg-rose-50 font-bold py-3 rounded-xl text-lg transition flex items-center justify-center gap-2">
-                        <i className="fa-solid fa-tv"></i> จอภาพรวม (สำหรับครู)
-                    </button>
-                </div>
-            </div>
-        );
-
-        const TeacherDashboard = ({ user }) => {
-            const [scores, setScores] = React.useState([]);
+        // ==========================================
+        // 2. TEACHER COMPONENT (Controller + Auto Timer)
+        // ==========================================
+        const TeacherMode = ({ user }) => {
+            const [gameState, setGameState] = React.useState(null);
+            const [players, setPlayers] = React.useState([]);
             const [loading, setLoading] = React.useState(true);
+            const [timeLeft, setTimeLeft] = React.useState(15); 
 
+            // Listen to Game State & Players
             React.useEffect(() => {
-                if (!user) return;
-                
-                // Real-time listener using Compat syntax
-                const scoresRef = getScoresCollection();
-                
-                const unsubscribe = scoresRef.onSnapshot((snapshot) => {
-                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    // Sort locally
-                    const sorted = data.sort((a, b) => b.score - a.score);
-                    setScores(sorted);
+                const unsubState = getGameStateRef().onSnapshot(doc => {
+                    setGameState(doc.exists ? doc.data() : { status: 'lobby', qIdx: 0, showAnswer: false });
                     setLoading(false);
-                }, (error) => {
-                    console.error("Error fetching scores:", error);
-                    setLoading(false);
-                    if(error.code === 'permission-denied') {
-                        alert("Permission Denied: กรุณาตรวจสอบ Firestore Rules ใน Firebase Console ให้อนุญาต read/write");
-                    }
+                }, err => {
+                    console.error("State Error:", err);
+                    if(err.code === 'permission-denied') alert("ติดสิทธิ์ Permission Denied: กรุณาแก้ Firestore Rules ใน Firebase Console ให้เป็น allow read, write: if true;");
                 });
 
-                return () => unsubscribe();
-            }, [user]);
+                const unsubPlayers = getPlayersRef().orderBy('score', 'desc').onSnapshot(snapshot => {
+                    setPlayers(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+                });
 
-            const handleReset = async () => {
-                if(!confirm("คุณต้องการล้างคะแนนทั้งหมดหรือไม่?")) return;
+                return () => { unsubState(); unsubPlayers(); };
+            }, []);
+
+            // Control Actions
+            const updateState = async (newData) => {
+                await getGameStateRef().set({ ...gameState, ...newData }, { merge: true });
+            };
+
+            // *** FIXED RESET FUNCTION ***
+            const resetGame = async () => {
+                if(!confirm("⚠️ ยืนยันการล้างข้อมูล?\n\n- ข้อมูลคะแนนทั้งหมดจะหายไป\n- ผู้เล่นต้องเข้าใหม่\n- เกมจะเริ่มที่หน้า Lobby")) return;
+                
                 try {
-                    const snapshot = await getScoresCollection().get();
-                    const batch = db.batch();
-                    snapshot.docs.forEach((doc) => {
-                        batch.delete(doc.ref);
+                    // 1. Delete Players (Chunked logic)
+                    const pSnap = await getPlayersRef().get();
+                    if (!pSnap.empty) {
+                        const batch = db.batch();
+                        pSnap.docs.forEach((doc) => {
+                            batch.delete(doc.ref);
+                        });
+                        await batch.commit();
+                    }
+                    
+                    // 2. Reset State
+                    await getGameStateRef().set({ 
+                        status: 'lobby', 
+                        qIdx: 0, 
+                        showAnswer: false, 
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp() 
                     });
-                    await batch.commit();
-                } catch (error) {
-                    console.error("Error clearing scores:", error);
-                    alert("เกิดข้อผิดพลาดในการล้างคะแนน");
+                    
+                    alert("✅ รีเซ็ตระบบเรียบร้อยแล้ว");
+                } catch (err) {
+                    console.error("Reset Error:", err);
+                    alert("❌ ไม่สามารถรีเซ็ตได้: " + err.message + "\n\n(ลองตรวจสอบ Firestore Rules หรือ Internet)");
                 }
             };
 
-            return (
-                <div className="min-h-screen bg-slate-800 text-white p-6">
-                    <div className="max-w-4xl mx-auto">
-                        <div className="flex justify-between items-center mb-8 bg-slate-700 p-4 rounded-xl">
-                            <h1 className="text-2xl font-bold flex items-center gap-3">
-                                <i className="fa-solid fa-trophy text-yellow-400"></i> Leaderboard (Real-time)
-                            </h1>
-                            <div className="text-right">
-                                <p className="text-sm text-gray-400">ผู้เล่นทั้งหมด</p>
-                                <p className="text-3xl font-bold text-emerald-400">{scores.length}</p>
-                            </div>
-                        </div>
+            const startGame = () => updateState({ status: 'playing', qIdx: 0, showAnswer: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+            
+            const revealAnswer = () => updateState({ showAnswer: true });
+            
+            const nextQuestion = () => {
+                if (gameState.qIdx < QUESTIONS.length - 1) {
+                    updateState({ qIdx: gameState.qIdx + 1, showAnswer: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+                } else {
+                    updateState({ status: 'finished' });
+                }
+            };
 
-                        {loading ? (
-                            <div className="text-center py-20 text-gray-400">กำลังเชื่อมต่อ...</div>
-                        ) : scores.length === 0 ? (
-                            <div className="text-center py-20 bg-slate-700/50 rounded-2xl border border-dashed border-slate-600">
-                                <i className="fa-solid fa-users text-4xl mb-4 text-slate-500"></i>
-                                <p>ยังไม่มีผู้เล่นส่งคะแนนเข้ามา</p>
-                                <p className="text-sm text-gray-500 mt-2">ให้นักเรียนเข้าลิงก์และเริ่มเล่นเกมได้เลย</p>
+            // --- AUTO TIMER LOGIC ---
+            React.useEffect(() => {
+                if (gameState?.status === 'playing') {
+                    if (gameState.showAnswer) {
+                        setTimeLeft(5); 
+                    } else {
+                        setTimeLeft(15); 
+                    }
+                }
+            }, [gameState?.qIdx, gameState?.showAnswer, gameState?.status]);
+
+            React.useEffect(() => {
+                if (gameState?.status !== 'playing') return;
+
+                if (timeLeft > 0) {
+                    const timerId = setTimeout(() => setTimeLeft(prev => prev - 1), 1000);
+                    return () => clearTimeout(timerId);
+                } else {
+                    if (!gameState.showAnswer) {
+                        revealAnswer();
+                    } else {
+                        nextQuestion();
+                    }
+                }
+            }, [timeLeft, gameState]);
+
+
+            if (loading) return <div className="text-center p-10 text-white">Connecting to Firestore...</div>;
+
+            // --- TEACHER: LOBBY ---
+            if (!gameState || gameState.status === 'lobby') {
+                return (
+                    <div className="min-h-screen bg-slate-800 text-white p-6 flex flex-col items-center">
+                        <div className="w-full max-w-4xl">
+                            <div className="flex justify-between items-center mb-10 border-b border-slate-600 pb-4">
+                                <div>
+                                    <h1 className="text-3xl font-bold text-rose-400">OSCC Classroom (ครู)</h1>
+                                    <p className="text-slate-400">Waiting for players...</p>
+                                </div>
+                                <button onClick={resetGame} className="text-xs text-red-400 border border-red-400 px-3 py-1 rounded hover:bg-red-400/10">Reset Room</button>
                             </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {scores.slice(0, 50).map((player, idx) => (
-                                    <div key={player.id} className={`flex items-center p-4 rounded-xl transition-all duration-500 animate-pop ${idx < 3 ? 'bg-gradient-to-r from-slate-700 to-slate-600 border border-slate-500' : 'bg-slate-700/50'}`}>
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl font-bold mr-4 ${
-                                            idx === 0 ? 'bg-yellow-400 text-yellow-900' :
-                                            idx === 1 ? 'bg-gray-300 text-gray-800' :
-                                            idx === 2 ? 'bg-amber-600 text-amber-100' :
-                                            'bg-slate-800 text-slate-400'
-                                        }`}>
-                                            {idx + 1}
-                                        </div>
-                                        <div className="flex-1">
-                                            <h3 className="font-bold text-lg">{player.name}</h3>
-                                            <p className="text-xs text-slate-400"><i className="fa-regular fa-clock"></i> {player.timestamp ? new Date(player.timestamp.seconds * 1000).toLocaleTimeString('th-TH') : 'Just now'}</p>
-                                        </div>
-                                        <div className="text-2xl font-mono font-bold text-emerald-400">
-                                            {player.score.toLocaleString()}
-                                        </div>
-                                    </div>
-                                ))}
+
+                            <div className="bg-slate-700/50 rounded-2xl p-8 text-center mb-8 border-2 border-dashed border-slate-500">
+                                <h2 className="text-6xl font-bold text-white mb-4">{players.length}</h2>
+                                <p className="text-xl text-slate-300">นักเรียนที่เข้าร่วม</p>
+                                <div className="flex flex-wrap gap-2 justify-center mt-6">
+                                    {players.map(p => (
+                                        <span key={p.id} className="bg-slate-600 px-3 py-1 rounded-full text-sm animate-bounce-short">{p.name}</span>
+                                    ))}
+                                </div>
                             </div>
-                        )}
-                        
-                        <div className="mt-10 text-center">
-                            <button onClick={handleReset} className="text-sm text-red-400 hover:text-red-300 underline">
-                                ล้างคะแนนทั้งหมด (Reset)
+
+                            <button onClick={startGame} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white text-2xl font-bold py-6 rounded-xl shadow-lg transform transition hover:scale-105">
+                                เริ่มเกม (START GAME)
                             </button>
                         </div>
                     </div>
-                </div>
-            );
-        };
-
-        const StudentGame = ({ user, goHome }) => {
-            const [gameState, setGameState] = React.useState('lobby'); // lobby, playing, finished
-            const [name, setName] = React.useState('');
-            const [qIdx, setQIdx] = React.useState(0);
-            const [score, setScore] = React.useState(0);
-            const [timeLeft, setTimeLeft] = React.useState(15);
-            const [selected, setSelected] = React.useState(null);
-            const [isCorrect, setIsCorrect] = React.useState(null); // null, true, false
-            
-            const timerRef = React.useRef(null);
-
-            // Timer Logic
-            React.useEffect(() => {
-                if (gameState === 'playing' && selected === null) {
-                    if (timeLeft > 0) {
-                        timerRef.current = setTimeout(() => setTimeLeft(prev => prev - 1), 1000);
-                    } else {
-                        handleAnswer(-1); // Time out
-                    }
-                }
-                return () => clearTimeout(timerRef.current);
-            }, [timeLeft, gameState, selected]);
-
-            const startGame = () => {
-                if (!name.trim()) return alert("กรุณากรอกชื่อ");
-                setGameState('playing');
-                setScore(0);
-                setQIdx(0);
-                setTimeLeft(15);
-            };
-
-            const handleAnswer = (idx) => {
-                setSelected(idx);
-                const correctIdx = QUESTIONS[qIdx].c;
-                
-                let points = 0;
-                let correct = false;
-
-                if (idx === correctIdx) {
-                    // Base 500 + Speed Bonus (max 500)
-                    points = 500 + Math.round((timeLeft / 15) * 500);
-                    correct = true;
-                }
-
-                setScore(prev => prev + points);
-                setIsCorrect(correct);
-
-                // Delay next question
-                setTimeout(() => {
-                    if (qIdx < QUESTIONS.length - 1) {
-                        setQIdx(prev => prev + 1);
-                        setTimeLeft(15);
-                        setSelected(null);
-                        setIsCorrect(null);
-                    } else {
-                        finishGame(score + points); // Pass final score
-                    }
-                }, 1500);
-            };
-
-            const finishGame = async (finalScore) => {
-                setGameState('finished');
-                // Upload to Firebase using Compat syntax
-                if (user) {
-                    try {
-                        await getScoresCollection().add({
-                            name: name,
-                            score: finalScore,
-                            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                    } catch (e) {
-                        console.error("Upload failed", e);
-                        alert("เกิดข้อผิดพลาดในการส่งคะแนน (ตรวจสอบ Internet หรือ Firestore Rules)");
-                    }
-                }
-            };
-
-            if (gameState === 'lobby') {
-                return (
-                    <div className="min-h-screen bg-rose-50 p-6 flex flex-col items-center justify-center">
-                        <button onClick={goHome} className="absolute top-4 left-4 text-gray-400"><i className="fa-solid fa-arrow-left"></i> กลับ</button>
-                        <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-sm text-center">
-                            <h2 className="text-2xl font-bold text-rose-600 mb-6">ลงทะเบียนผู้เล่น</h2>
-                            <input 
-                                type="text" 
-                                value={name} 
-                                onChange={e => setName(e.target.value)}
-                                placeholder="กรอกชื่อของคุณ..." 
-                                className="w-full bg-gray-100 p-4 rounded-xl mb-4 text-center text-lg focus:outline-none focus:ring-2 focus:ring-rose-400"
-                            />
-                            <button onClick={startGame} className="w-full bg-rose-500 text-white font-bold py-4 rounded-xl text-lg shadow-lg">เริ่มเกมเลย!</button>
-                        </div>
-                    </div>
                 );
             }
 
-            if (gameState === 'finished') {
+            // --- TEACHER: PLAYING ---
+            if (gameState.status === 'playing') {
+                const q = QUESTIONS[gameState.qIdx];
                 return (
-                    <div className="min-h-screen bg-rose-500 p-6 flex flex-col items-center justify-center text-white text-center">
-                        <i className="fa-solid fa-flag-checkered text-6xl mb-6 text-yellow-300 animate-bounce"></i>
-                        <h2 className="text-3xl font-bold mb-2">จบเกมแล้ว!</h2>
-                        <p className="opacity-80 mb-6">คุณทำได้ยอดเยี่ยมมาก</p>
-                        
-                        <div className="bg-white text-gray-800 p-6 rounded-3xl w-full max-w-sm mb-6 shadow-2xl">
-                            <p className="text-sm text-gray-500">คะแนนของคุณ</p>
-                            <div className="text-5xl font-black text-rose-500 my-2">{score.toLocaleString()}</div>
-                            <p className="text-sm text-gray-400">ชื่อ: {name}</p>
-                        </div>
+                    <div className="min-h-screen bg-slate-100 p-6 flex flex-col items-center justify-center relative">
+                        {/* Status Bar */}
+                        <div className={`absolute top-0 left-0 h-2 bg-rose-500 transition-all duration-1000 ease-linear`} style={{ width: `${(timeLeft / (gameState.showAnswer ? 5 : 15)) * 100}%` }}></div>
 
-                        <p className="text-sm animate-pulse">คะแนนถูกส่งไปที่หน้าจอครูแล้ว...</p>
-                        <button onClick={() => window.location.reload()} className="mt-8 text-white/70 hover:text-white underline">กลับหน้าหลัก</button>
-                    </div>
-                );
-            }
-
-            // Playing State
-            const q = QUESTIONS[qIdx];
-            return (
-                <div className="min-h-screen bg-slate-100 flex flex-col">
-                    {/* Top Bar */}
-                    <div className="bg-white p-4 shadow-sm flex justify-between items-center z-10 relative">
-                        <div className="flex items-center gap-2">
-                            <span className="bg-rose-100 text-rose-600 px-3 py-1 rounded-full font-bold text-sm">ข้อ {qIdx + 1}/10</span>
-                        </div>
-                        <div className="font-mono font-bold text-rose-600 text-xl">{score}</div>
-                    </div>
-
-                    {/* Timer Bar */}
-                    <div className="h-2 bg-gray-200 w-full">
-                        <div 
-                            className="h-full bg-rose-500 transition-all duration-1000 ease-linear"
-                            style={{ width: `${(timeLeft/15)*100}%` }}
-                        ></div>
-                    </div>
-
-                    {/* Question */}
-                    <div className="p-6 text-center bg-white rounded-b-3xl shadow-sm mb-4">
-                        <h2 className="text-xl font-bold text-gray-800 leading-relaxed">{q.q}</h2>
-                    </div>
-
-                    {/* Options */}
-                    <div className="flex-1 p-4 flex flex-col gap-3 max-w-md mx-auto w-full">
-                        {q.a.map((opt, i) => {
-                            let statusClass = "bg-white text-gray-700 hover:bg-gray-50 border-b-4 border-gray-200";
+                        <div className="w-full max-w-5xl bg-white rounded-3xl shadow-xl overflow-hidden">
+                            {/* Header */}
+                            <div className="bg-slate-800 p-6 flex justify-between items-center text-white">
+                                <h2 className="text-2xl font-bold">ข้อที่ {gameState.qIdx + 1}/{QUESTIONS.length}</h2>
+                                <div className="flex items-center gap-4">
+                                    <div className="text-3xl font-mono font-bold text-rose-400 bg-slate-900 px-4 py-1 rounded-lg">
+                                        <i className="fa-regular fa-clock mr-2"></i>{timeLeft}s
+                                    </div>
+                                    <div className="text-xl opacity-70">| ผู้เล่น: {players.length}</div>
+                                </div>
+                            </div>
                             
-                            if (selected !== null) {
-                                if (i === q.c) statusClass = "bg-green-500 text-white border-green-700"; // Correct
-                                else if (i === selected) statusClass = "bg-red-500 text-white border-red-700"; // Wrong selected
-                                else statusClass = "bg-gray-200 text-gray-400 border-transparent opacity-50"; // Others
-                            }
+                            {/* Question */}
+                            <div className="p-10 text-center">
+                                <h1 className="text-4xl font-bold text-slate-800 mb-10 leading-relaxed">{q.q}</h1>
+                                
+                                <div className="grid grid-cols-2 gap-6">
+                                    {q.a.map((opt, i) => {
+                                        let bg = "bg-slate-100 text-slate-600";
+                                        if (gameState.showAnswer) {
+                                            if (i === q.c) bg = "bg-green-500 text-white shadow-lg scale-105 border-green-600";
+                                            else bg = "bg-slate-200 opacity-40";
+                                        }
+                                        return (
+                                            <div key={i} className={`p-8 rounded-xl text-2xl font-semibold transition-all duration-300 border-2 border-transparent ${bg}`}>
+                                                {opt}
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </div>
 
-                            return (
-                                <button 
-                                    key={i}
-                                    disabled={selected !== null}
-                                    onClick={() => handleAnswer(i)}
-                                    className={`p-4 rounded-xl text-left font-medium text-lg transition-all duration-200 shadow-sm ${statusClass}`}
-                                >
-                                    {opt}
-                                    {selected !== null && i === q.c && <i className="fa-solid fa-check float-right mt-1"></i>}
-                                    {selected !== null && i === selected && i !== q.c && <i className="fa-solid fa-xmark float-right mt-1"></i>}
-                                </button>
-                            );
-                        })}
+                            {/* Controls */}
+                            <div className="bg-slate-100 p-6 flex justify-between items-center border-t">
+                                <div className="text-slate-500 text-sm italic">
+                                    {gameState.showAnswer 
+                                        ? "กำลังไปข้อถัดไปอัตโนมัติ..." 
+                                        : "กำลังเฉลยคำตอบอัตโนมัติ..."}
+                                </div>
+                                <div className="flex gap-4">
+                                    {!gameState.showAnswer ? (
+                                        <button onClick={revealAnswer} className="text-slate-500 border border-slate-300 px-4 py-2 rounded-lg hover:bg-slate-200 text-sm">
+                                            ข้ามเวลา (เฉลยเลย)
+                                        </button>
+                                    ) : (
+                                        <button onClick={nextQuestion} className="text-slate-500 border border-slate-300 px-4 py-2 rounded-lg hover:bg-slate-200 text-sm">
+                                            ข้ามเวลา (ไปข้อต่อไป)
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            );
+                );
+            }
+
+            // --- TEACHER: LEADERBOARD ---
+            if (gameState.status === 'finished') {
+                return (
+                    <div className="min-h-screen bg-slate-900 text-white p-6 flex flex-col items-center justify-center">
+                        <i className="fa-solid fa-trophy text-yellow-400 text-6xl mb-6 animate-bounce"></i>
+                        <h1 className="text-5xl font-bold mb-10 text-center bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-orange-500">
+                            TOP 5 WINNERS
+                        </h1>
+                        
+                        <div className="w-full max-w-2xl space-y-4">
+                            {players.slice(0, 5).map((p, i) => (
+                                <div key={p.id} className={`flex items-center p-6 rounded-2xl transform transition hover:scale-105 ${
+                                    i===0 ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-yellow-500/50 shadow-lg border-2 border-yellow-300' :
+                                    i===1 ? 'bg-slate-700 border border-slate-500' :
+                                    i===2 ? 'bg-slate-700 border border-slate-500' : 
+                                    'bg-slate-800'
+                                }`}>
+                                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl font-black mr-6 ${
+                                        i===0 ? 'bg-white text-orange-500' : 'bg-slate-900 text-slate-400'
+                                    }`}>
+                                        {i+1}
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="text-2xl font-bold">{p.name}</div>
+                                    </div>
+                                    <div className="text-3xl font-mono font-bold">
+                                        {p.score.toLocaleString()}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <button onClick={resetGame} className="mt-12 text-slate-500 hover:text-white underline">
+                            เริ่มเกมใหม่ (Reset)
+                        </button>
+                    </div>
+                );
+            }
+
+            return <div>Loading...</div>;
         };
 
-        // --- 3. MAIN APP ---
-
-        const App = () => {
-            const [user, setUser] = React.useState(null);
-            const [mode, setMode] = React.useState('menu'); // menu, student, teacher
-
+        // ==========================================
+        // 3. STUDENT COMPONENT (Player)
+        // ==========================================
+        const StudentMode = ({ user, goHome }) => {
+            const [gameState, setGameState] = React.useState(null);
+            const [name, setName] = React.useState('');
+            const [joined, setJoined] = React.useState(false);
+            const [selected, setSelected] = React.useState(null); 
+            const [currentScore, setCurrentScore] = React.useState(0);
+            const [clientTimer, setClientTimer] = React.useState(15); 
+            
+            // Listen to Game State
             React.useEffect(() => {
-                const initAuth = async () => {
-                    // Check for custom token provided by environment
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        try {
-                            await auth.signInWithCustomToken(__initial_auth_token);
-                        } catch (err) {
-                            console.error("Custom token sign-in failed, falling back to anonymous", err);
-                            await auth.signInAnonymously();
+                const unsub = getGameStateRef().onSnapshot(doc => {
+                    const data = doc.data();
+                    if (!data) return;
+                    
+                    setGameState(prev => {
+                        // Detect Question Change -> Reset Local State
+                        if (prev && prev.qIdx !== data.qIdx) {
+                            setSelected(null);
+                            setClientTimer(15); 
                         }
-                    } else {
-                        await auth.signInAnonymously();
-                    }
-                };
-                initAuth();
-                const unsubscribe = auth.onAuthStateChanged((u) => setUser(u));
-                return () => unsubscribe();
+                        return data;
+                    });
+                });
+                return () => unsub();
             }, []);
 
-            if (mode === 'menu') return <MainMenu setMode={setMode} />;
-            if (mode === 'student') return <StudentGame user={user} goHome={() => setMode('menu')} />;
-            if (mode === 'teacher') return <TeacherDashboard user={user} />;
+            // Visual Timer Countdown
+            React.useEffect(() => {
+                if (gameState?.status === 'playing' && !gameState.showAnswer && clientTimer > 0) {
+                    const timer = setTimeout(() => setClientTimer(prev => prev - 1), 1000);
+                    return () => clearTimeout(timer);
+                }
+            }, [clientTimer, gameState]);
+
+            // Join Game
+            const joinGame = async () => {
+                if (!name.trim()) return;
+                try {
+                    await getPlayersRef().doc(user.uid).set({
+                        name: name,
+                        score: 0,
+                        joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    setJoined(true);
+                } catch(e) {
+                    alert("ไม่สามารถเข้าร่วมได้ (ตรวจสอบ Internet)");
+                }
+            };
+
+            // Submit Answer
+            const handleAnswer = async (idx) => {
+                if (selected !== null) return; 
+                setSelected(idx);
+
+                const correctIdx = QUESTIONS[gameState.qIdx].c;
+                const correct = (idx === correctIdx);
+                
+                if (correct) {
+                    const newScore = currentScore + 100;
+                    setCurrentScore(newScore);
+                    await getPlayersRef().doc(user.uid).update({ score: newScore });
+                }
+            };
+
+            // --- STUDENT UI ---
+            if (!joined) {
+                return (
+                    <div className="min-h-screen bg-rose-50 p-6 flex flex-col items-center justify-center">
+                        <div className="bg-white p-8 rounded-3xl shadow-lg w-full max-w-sm text-center">
+                            <h2 className="text-2xl font-bold text-rose-500 mb-4">เข้าห้องเรียน</h2>
+                            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="ใส่ชื่อของคุณ..." className="w-full bg-gray-100 p-4 rounded-xl mb-4 text-center text-lg outline-none focus:ring-2 focus:ring-rose-400" />
+                            <button onClick={joinGame} className="w-full bg-rose-500 text-white font-bold py-4 rounded-xl shadow-lg">ยืนยันชื่อ</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (!gameState || gameState.status === 'lobby') {
+                return (
+                    <div className="min-h-screen bg-rose-500 p-6 flex flex-col items-center justify-center text-white text-center">
+                        <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mb-6 animate-pulse"><i className="fa-solid fa-user-clock text-4xl"></i></div>
+                        <h2 className="text-3xl font-bold mb-2">สวัสดี {name}!</h2>
+                        <p>รอคุณครูกดเริ่มเกมสักครู่...</p>
+                    </div>
+                );
+            }
+
+            if (gameState.status === 'playing') {
+                const q = QUESTIONS[gameState.qIdx];
+                return (
+                    <div className="min-h-screen bg-slate-100 flex flex-col">
+                        <div className="bg-white p-4 shadow-sm flex justify-between items-center z-10 sticky top-0 relative overflow-hidden">
+                            <span className="bg-rose-100 text-rose-600 px-3 py-1 rounded-full font-bold text-sm">ข้อ {gameState.qIdx + 1}</span>
+                            <span className="font-mono font-bold text-rose-600 text-xl">{currentScore} pts</span>
+                            
+                            {/* Visual Timer Bar */}
+                            {!gameState.showAnswer && (
+                                <div className="absolute bottom-0 left-0 h-1 bg-rose-500 timer-progress" style={{ width: `${(clientTimer / 15) * 100}%` }}></div>
+                            )}
+                        </div>
+
+                        <div className="p-6 pb-2">
+                            <h2 className="text-xl font-bold text-slate-800">{q.q}</h2>
+                        </div>
+
+                        <div className="flex-1 p-4 flex flex-col gap-3 pb-10">
+                            {q.a.map((opt, i) => {
+                                let statusClass = "bg-white text-slate-700 shadow-sm border-2 border-transparent";
+                                if (gameState.showAnswer) {
+                                    if (i === q.c) statusClass = "bg-green-500 text-white border-green-600";
+                                    else if (i === selected) statusClass = "bg-red-500 text-white border-red-600 opacity-60";
+                                    else statusClass = "bg-slate-200 text-slate-400 opacity-40";
+                                } else if (selected !== null) {
+                                    if (i === selected) statusClass = "bg-rose-500 text-white border-rose-600";
+                                    else statusClass = "bg-slate-100 text-slate-400 opacity-50 scale-95";
+                                }
+                                return (
+                                    <button key={i} disabled={selected !== null || gameState.showAnswer} onClick={() => handleAnswer(i)} className={`p-5 rounded-xl text-left font-medium text-lg transition-all duration-200 ${statusClass}`}>
+                                        {opt}
+                                        {gameState.showAnswer && i === q.c && <i className="fa-solid fa-check float-right"></i>}
+                                        {gameState.showAnswer && i === selected && i !== q.c && <i className="fa-solid fa-xmark float-right"></i>}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        {gameState.showAnswer && (
+                             <div className="p-4 bg-slate-800 text-white text-center animate-bounce-short">
+                                {selected === QUESTIONS[gameState.qIdx].c ? "เยี่ยมมาก! ถูกต้อง" : "ข้อนี้ยังไม่ถูกนะ"}
+                             </div>
+                        )}
+                    </div>
+                );
+            }
+
+            if (gameState.status === 'finished') {
+                return (
+                    <div className="min-h-screen bg-purple-600 p-6 flex flex-col items-center justify-center text-white text-center">
+                        <i className="fa-solid fa-flag-checkered text-6xl mb-6 text-yellow-300"></i>
+                        <h2 className="text-3xl font-bold mb-2">จบเกมแล้ว!</h2>
+                        <div className="bg-white/10 rounded-2xl p-6 mt-6 w-full max-w-xs backdrop-blur-sm border border-white/20">
+                            <p className="text-sm opacity-70">คะแนนของคุณ</p>
+                            <div className="text-5xl font-black my-2">{currentScore}</div>
+                        </div>
+                        <p className="mt-8 opacity-80">ดูรายชื่อผู้ชนะได้ที่หน้าจอครู</p>
+                    </div>
+                );
+            }
+            return <div className="p-10 text-center">Loading Game...</div>;
+        };
+
+        // ==========================================
+        // 4. MAIN APP
+        // ==========================================
+        const App = () => {
+            const [user, setUser] = React.useState(null);
+            const [mode, setMode] = React.useState('menu'); 
+
+            React.useEffect(() => {
+                const init = async () => { await auth.signInAnonymously(); };
+                init();
+                auth.onAuthStateChanged(setUser);
+            }, []);
+
+            if (mode === 'menu') return (
+                <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-center">
+                    <div className="w-20 h-20 bg-rose-500 rounded-full flex items-center justify-center text-4xl text-white mb-6 shadow-lg shadow-rose-500/50">
+                        <i className="fa-solid fa-bolt"></i>
+                    </div>
+                    <h1 className="text-4xl font-bold text-white mb-2">OSCC Live Quiz</h1>
+                    <p className="text-slate-400 mb-10">ระบบห้องเรียนตอบคำถาม Real-time (Auto)</p>
+                    <div className="flex flex-col gap-4 w-full max-w-sm">
+                        <button onClick={() => setMode('teacher')} className="bg-white text-slate-900 p-4 rounded-xl font-bold text-lg hover:bg-slate-100 flex items-center justify-center gap-3"><i className="fa-solid fa-chalkboard-user"></i> โหมดควบคุม (ครู)</button>
+                        <button onClick={() => setMode('student')} className="bg-rose-500 text-white p-4 rounded-xl font-bold text-lg hover:bg-rose-600 shadow-lg shadow-rose-900/50 flex items-center justify-center gap-3"><i className="fa-solid fa-gamepad"></i> เข้าเล่น (นักเรียน)</button>
+                    </div>
+                </div>
+            );
+            if (mode === 'teacher') return <TeacherMode user={user} />;
+            if (mode === 'student') return <StudentMode user={user} goHome={() => setMode('menu')} />;
             return null;
         };
 
