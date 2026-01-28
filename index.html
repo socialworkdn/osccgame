@@ -377,6 +377,13 @@
 
             const joinGame = async () => {
                 if (!name.trim()) return;
+                
+                // Safety check: User must be authenticated
+                if (!user) {
+                    alert("กำลังเชื่อมต่อระบบ กรุณารอสักครู่...");
+                    return;
+                }
+
                 try {
                     await getPlayersRef().doc(user.uid).set({
                         name: name,
@@ -385,7 +392,12 @@
                     });
                     setJoined(true);
                 } catch(e) {
-                    alert("ไม่สามารถเข้าร่วมได้ (ตรวจสอบ Internet)");
+                    console.error("Join Error:", e);
+                    if (e.code === 'permission-denied') {
+                        alert("⚠️ ไม่สามารถบันทึกชื่อได้ (Permission Denied)\n\nสาเหตุ: ไม่ได้ตั้งค่า Firestore Rules ใน Firebase Console\n\nวิธีแก้: ไปที่ Firebase Console > Firestore Database > Rules \nแล้วเปลี่ยนโค้ดเป็น: allow read, write: if true;");
+                    } else {
+                        alert(`❌ เกิดข้อผิดพลาด: ${e.message}\n(กรุณาตรวจสอบ Internet)`);
+                    }
                 }
             };
 
@@ -409,7 +421,13 @@
                         <div className="bg-white p-8 rounded-3xl shadow-lg w-full max-w-sm text-center">
                             <h2 className="text-2xl font-bold text-rose-500 mb-4">เข้าห้องเรียน</h2>
                             <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="ใส่ชื่อของคุณ..." className="w-full bg-gray-100 p-4 rounded-xl mb-4 text-center text-lg outline-none focus:ring-2 focus:ring-rose-400" />
-                            <button onClick={joinGame} className="w-full bg-rose-500 text-white font-bold py-4 rounded-xl shadow-lg">ยืนยันชื่อ</button>
+                            <button 
+                                onClick={joinGame} 
+                                disabled={!user}
+                                className={`w-full text-white font-bold py-4 rounded-xl shadow-lg transition-colors ${user ? 'bg-rose-500 hover:bg-rose-600' : 'bg-gray-400 cursor-not-allowed'}`}
+                            >
+                                {user ? "ยืนยันชื่อ" : "กำลังเชื่อมต่อระบบ..."}
+                            </button>
                         </div>
                     </div>
                 );
