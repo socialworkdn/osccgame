@@ -64,8 +64,9 @@
         const getGameStateRef = () => db.collection('artifacts').doc(appId).collection('public').doc('data').collection('state').doc('current');
         const getPlayersRef = () => db.collection('artifacts').doc(appId).collection('public').doc('data').collection('players');
 
-        // Questions Data
+        // Questions Data (Total 19 Questions)
         const QUESTIONS = [
+            // --- Part 1: OSCC & Domestic Violence (10) ---
             { q: "OSCC ย่อมาจากอะไร?", a: ["One Stop Service Center", "One Stop Crisis Center", "Online Social Care", "One Safe Child Center"], c: 1 },
             { q: "แจ้งเหตุ OSCC รพ.ดำเนินสะดวก โทรเบอร์?", a: ["1669", "191", "622", "1112"], c: 2 },
             { q: "เกณฑ์ผู้ป่วย 'เด็ก' ต้องอายุไม่เกินกี่ปี?", a: ["12 ปี", "15 ปี", "18 ปี", "20 ปี"], c: 2 },
@@ -75,7 +76,36 @@
             { q: "นักสังคมสงเคราะห์ รพ.ดำเนินฯ ชื่อพี่อะไร?", a: ["พี่ป้อม", "พี่ปอม", "พี่ปลา", "พี่เปิ้ล"], c: 1 },
             { q: "ผู้ชายถูกทำร้าย เป็น OSCC เมื่อ?", a: ["ถูกแฟน/คนในบ้านทำร้าย", "ถูกเพื่อนต่อย", "โดนรุมหน้างานวัด", "เป็นทุกกรณี"], c: 0 },
             { q: "หัวใจสำคัญของการทำงาน OSCC คือ?", a: ["ออกข่าว", "จับโจร", "รักษาความลับ/ความปลอดภัย", "เรียกเงิน"], c: 2 },
-            { q: "สโลแกนสำคัญคือ?", a: ["ไม่ยุ่งเรื่องชาวบ้าน", "ไม่ยอมรับ ไม่นิ่งเฉย ไม่กระทำ", "รักวัวให้ผูก รักลูกให้ตี", "ตาต่อตา ฟันต่อฟัน"], c: 1 }
+            { q: "สโลแกนสำคัญคือ?", a: ["ไม่ยุ่งเรื่องชาวบ้าน", "ไม่ยอมรับ ไม่นิ่งเฉย ไม่กระทำ", "รักวัวให้ผูก รักลูกให้ตี", "ตาต่อตา ฟันต่อฟัน"], c: 1 },
+            
+            // --- Part 2: Healthcare Rights (5) ---
+            { q: "นโยบาย '30 บาทรักษาทุกที่' ใช้เอกสารอะไรเพียงใบเดียวในการเข้ารับบริการ?", a: ["สำเนาทะเบียนบ้าน", "ใบส่งตัวจากโรงพยาบาลต้นสังกัด", "บัตรประชาชนใบเดียว", "บัตรผู้มีรายได้น้อย"], c: 2 },
+            { q: "สิทธิ UCEP (เจ็บป่วยฉุกเฉินวิกฤต) คุ้มครองการรักษาฟรีใน 72 ชม.แรก กรณีใด?", a: ["ปวดท้องโรคกระเพาะรุนแรง", "แขนหักแต่ยังรู้สึกตัวดี", "หมดสติ ไม่รู้สึกตัว หายใจไม่ออก", "ท้องเสียรุนแรง อ่อนเพลีย"], c: 2 },
+            { q: "ผู้ถือ 'บัตรทอง' ย้ายสถานพยาบาลออนไลน์ได้ปีละกี่ครั้ง?", a: ["1 ครั้ง", "2 ครั้ง", "4 ครั้ง", "ย้ายได้ไม่จำกัดจำนวนครั้ง"], c: 2 },
+            { q: "เจ็บป่วยเล็กน้อย (Common Illness) เช่น ปวดหัว เจ็บคอ ผู้ใช้สิทธิบัตรทองรับยาฟรีได้ที่ไหน?", a: ["ร้านสะดวกซื้อทั่วไป", "คลินิกเสริมความงาม", "ร้านยาคุณภาพที่เข้าร่วมโครงการ", "โรงพยาบาลเอกชนทุกแห่ง"], c: 2 },
+            { q: "เจ็บป่วยฉุกเฉิน 'ไม่วิกฤต' หากเข้า รพ.เอกชนนอกสิทธิ ใครต้องรับผิดชอบค่าใช้จ่าย?", a: ["รัฐบาลจ่ายให้ทั้งหมด", "ใช้สิทธิ UCEP ได้", "ผู้ป่วยต้องจ่ายเงินเอง", "โรงพยาบาลต้นสังกัดตามมาจ่ายให้"], c: 2 },
+
+            // --- Part 3: Social Security & Civil Servant Rights (New 4) ---
+            { 
+                q: "ฟรีแลนซ์ หรือผู้ประกอบอาชีพอิสระ ที่ต้องการมีสิทธิประกันสังคม ต้องสมัครมาตราใด?", 
+                a: ["มาตรา 33", "มาตรา 39", "มาตรา 40", "มาตรา 44"], 
+                c: 2 
+            },
+            { 
+                q: "หากเป็น 'ข้าราชการ' ต้องการใช้ 'ยาต้นแบบ' (Original) ที่มีราคาสูงกว่าเกณฑ์ ต้องทำอย่างไร?", 
+                a: ["เบิกได้เต็มจำนวนเหมือนเดิม", "ต้องร่วมจ่าย (Co-payment) ส่วนต่างเอง", "ไม่สามารถเบิกได้เลย", "ต้องให้แพทย์ทำเรื่องขออนุมัติพิเศษทุกครั้ง"], 
+                c: 1 
+            },
+            { 
+                q: "ผู้ประกันตน 'ประกันสังคม' สามารถเบิกค่าทันตกรรม (ทำฟัน) ได้ปีละเท่าไหร่?", 
+                a: ["600 บาท", "900 บาท", "1,200 บาท", "เบิกได้ตามจริงไม่จำกัดวงเงิน"], 
+                c: 1 
+            },
+            { 
+                q: "'อายุครบ 20 ปีบริบูรณ์' มีผลอย่างไรกับสิทธิรักษาพยาบาลของลูกข้าราชการ?", 
+                a: ["ใช้สิทธิเบิกตรงได้ต่อไปจนจบปริญญาตรี", "หมดสิทธิเบิกตรงทันที ต้องเปลี่ยนไปใช้สิทธิบัตรทอง/ประกันสังคม", "ต้องจ่ายเงินสมทบเพิ่มเพื่อรักษาสิทธิเดิม", "ใช้สิทธิได้เฉพาะกรณีอุบัติเหตุฉุกเฉินเท่านั้น"], 
+                c: 1 
+            }
         ];
 
         // ==========================================
@@ -94,7 +124,7 @@
                     setLoading(false);
                 }, err => {
                     console.error("State Error:", err);
-                    if(err.code === 'permission-denied') alert("ติดสิทธิ์ Permission Denied: กรุณาแก้ Firestore Rules ใน Firebase Console ให้เป็น allow read, write: if true;");
+                    if(err.code === 'permission-denied') alert("ติดสิทธิ์ Permission Denied: กรุณาแก้ Firestore Rules");
                 });
 
                 const unsubPlayers = getPlayersRef().orderBy('score', 'desc').onSnapshot(snapshot => {
@@ -109,12 +139,10 @@
                 await getGameStateRef().set({ ...gameState, ...newData }, { merge: true });
             };
 
-            // *** FIXED RESET FUNCTION ***
             const resetGame = async () => {
                 if(!confirm("⚠️ ยืนยันการล้างข้อมูล?\n\n- ข้อมูลคะแนนทั้งหมดจะหายไป\n- ผู้เล่นต้องเข้าใหม่\n- เกมจะเริ่มที่หน้า Lobby")) return;
                 
                 try {
-                    // 1. Delete Players (Chunked logic)
                     const pSnap = await getPlayersRef().get();
                     if (!pSnap.empty) {
                         const batch = db.batch();
@@ -123,26 +151,21 @@
                         });
                         await batch.commit();
                     }
-                    
-                    // 2. Reset State
                     await getGameStateRef().set({ 
                         status: 'lobby', 
                         qIdx: 0, 
                         showAnswer: false, 
                         timestamp: firebase.firestore.FieldValue.serverTimestamp() 
                     });
-                    
                     alert("✅ รีเซ็ตระบบเรียบร้อยแล้ว");
                 } catch (err) {
                     console.error("Reset Error:", err);
-                    alert("❌ ไม่สามารถรีเซ็ตได้: " + err.message + "\n\n(ลองตรวจสอบ Firestore Rules หรือ Internet)");
+                    alert("❌ ไม่สามารถรีเซ็ตได้: " + err.message);
                 }
             };
 
             const startGame = () => updateState({ status: 'playing', qIdx: 0, showAnswer: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
-            
             const revealAnswer = () => updateState({ showAnswer: true });
-            
             const nextQuestion = () => {
                 if (gameState.qIdx < QUESTIONS.length - 1) {
                     updateState({ qIdx: gameState.qIdx + 1, showAnswer: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
@@ -151,7 +174,7 @@
                 }
             };
 
-            // --- AUTO TIMER LOGIC ---
+            // Auto Timer Logic
             React.useEffect(() => {
                 if (gameState?.status === 'playing') {
                     if (gameState.showAnswer) {
@@ -187,8 +210,8 @@
                         <div className="w-full max-w-4xl">
                             <div className="flex justify-between items-center mb-10 border-b border-slate-600 pb-4">
                                 <div>
-                                    <h1 className="text-3xl font-bold text-rose-400">OSCC Classroom (ครู)</h1>
-                                    <p className="text-slate-400">Waiting for players...</p>
+                                    <h1 className="text-3xl font-bold text-rose-400">OSCC & สิทธิการรักษา</h1>
+                                    <p className="text-slate-400">Classroom Controller</p>
                                 </div>
                                 <button onClick={resetGame} className="text-xs text-red-400 border border-red-400 px-3 py-1 rounded hover:bg-red-400/10">Reset Room</button>
                             </div>
@@ -233,9 +256,9 @@
                             
                             {/* Question */}
                             <div className="p-10 text-center">
-                                <h1 className="text-4xl font-bold text-slate-800 mb-10 leading-relaxed">{q.q}</h1>
+                                <h1 className="text-3xl md:text-4xl font-bold text-slate-800 mb-10 leading-relaxed">{q.q}</h1>
                                 
-                                <div className="grid grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {q.a.map((opt, i) => {
                                         let bg = "bg-slate-100 text-slate-600";
                                         if (gameState.showAnswer) {
@@ -243,7 +266,7 @@
                                             else bg = "bg-slate-200 opacity-40";
                                         }
                                         return (
-                                            <div key={i} className={`p-8 rounded-xl text-2xl font-semibold transition-all duration-300 border-2 border-transparent ${bg}`}>
+                                            <div key={i} className={`p-6 md:p-8 rounded-xl text-xl md:text-2xl font-semibold transition-all duration-300 border-2 border-transparent ${bg}`}>
                                                 {opt}
                                             </div>
                                         )
@@ -275,39 +298,40 @@
                 );
             }
 
-            // --- TEACHER: LEADERBOARD ---
+            // --- TEACHER: LEADERBOARD (Top 10) ---
             if (gameState.status === 'finished') {
                 return (
                     <div className="min-h-screen bg-slate-900 text-white p-6 flex flex-col items-center justify-center">
                         <i className="fa-solid fa-trophy text-yellow-400 text-6xl mb-6 animate-bounce"></i>
                         <h1 className="text-5xl font-bold mb-10 text-center bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-orange-500">
-                            TOP 5 WINNERS
+                            TOP 10 WINNERS
                         </h1>
                         
-                        <div className="w-full max-w-2xl space-y-4">
-                            {players.slice(0, 5).map((p, i) => (
-                                <div key={p.id} className={`flex items-center p-6 rounded-2xl transform transition hover:scale-105 ${
+                        <div className="w-full max-w-3xl space-y-3 overflow-y-auto max-h-[70vh] px-4">
+                            {players.slice(0, 10).map((p, i) => (
+                                <div key={p.id} className={`flex items-center p-4 rounded-xl transform transition hover:scale-105 ${
                                     i===0 ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-yellow-500/50 shadow-lg border-2 border-yellow-300' :
                                     i===1 ? 'bg-slate-700 border border-slate-500' :
                                     i===2 ? 'bg-slate-700 border border-slate-500' : 
                                     'bg-slate-800'
                                 }`}>
-                                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl font-black mr-6 ${
-                                        i===0 ? 'bg-white text-orange-500' : 'bg-slate-900 text-slate-400'
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl font-black mr-4 ${
+                                        i===0 ? 'bg-white text-orange-500' : 
+                                        i < 3 ? 'bg-slate-600 text-white' : 'bg-slate-900 text-slate-400'
                                     }`}>
                                         {i+1}
                                     </div>
                                     <div className="flex-1">
-                                        <div className="text-2xl font-bold">{p.name}</div>
+                                        <div className="text-xl font-bold">{p.name}</div>
                                     </div>
-                                    <div className="text-3xl font-mono font-bold">
+                                    <div className="text-2xl font-mono font-bold">
                                         {p.score.toLocaleString()}
                                     </div>
                                 </div>
                             ))}
                         </div>
 
-                        <button onClick={resetGame} className="mt-12 text-slate-500 hover:text-white underline">
+                        <button onClick={resetGame} className="mt-8 text-slate-500 hover:text-white underline">
                             เริ่มเกมใหม่ (Reset)
                         </button>
                     </div>
@@ -328,14 +352,12 @@
             const [currentScore, setCurrentScore] = React.useState(0);
             const [clientTimer, setClientTimer] = React.useState(15); 
             
-            // Listen to Game State
             React.useEffect(() => {
                 const unsub = getGameStateRef().onSnapshot(doc => {
                     const data = doc.data();
                     if (!data) return;
                     
                     setGameState(prev => {
-                        // Detect Question Change -> Reset Local State
                         if (prev && prev.qIdx !== data.qIdx) {
                             setSelected(null);
                             setClientTimer(15); 
@@ -346,7 +368,6 @@
                 return () => unsub();
             }, []);
 
-            // Visual Timer Countdown
             React.useEffect(() => {
                 if (gameState?.status === 'playing' && !gameState.showAnswer && clientTimer > 0) {
                     const timer = setTimeout(() => setClientTimer(prev => prev - 1), 1000);
@@ -354,7 +375,6 @@
                 }
             }, [clientTimer, gameState]);
 
-            // Join Game
             const joinGame = async () => {
                 if (!name.trim()) return;
                 try {
@@ -369,7 +389,6 @@
                 }
             };
 
-            // Submit Answer
             const handleAnswer = async (idx) => {
                 if (selected !== null) return; 
                 setSelected(idx);
@@ -384,7 +403,6 @@
                 }
             };
 
-            // --- STUDENT UI ---
             if (!joined) {
                 return (
                     <div className="min-h-screen bg-rose-50 p-6 flex flex-col items-center justify-center">
@@ -414,8 +432,6 @@
                         <div className="bg-white p-4 shadow-sm flex justify-between items-center z-10 sticky top-0 relative overflow-hidden">
                             <span className="bg-rose-100 text-rose-600 px-3 py-1 rounded-full font-bold text-sm">ข้อ {gameState.qIdx + 1}</span>
                             <span className="font-mono font-bold text-rose-600 text-xl">{currentScore} pts</span>
-                            
-                            {/* Visual Timer Bar */}
                             {!gameState.showAnswer && (
                                 <div className="absolute bottom-0 left-0 h-1 bg-rose-500 timer-progress" style={{ width: `${(clientTimer / 15) * 100}%` }}></div>
                             )}
