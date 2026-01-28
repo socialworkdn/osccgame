@@ -111,7 +111,7 @@
         // ==========================================
         // 2. TEACHER COMPONENT (Controller + Auto Timer)
         // ==========================================
-        const TeacherMode = ({ user }) => {
+        const TeacherMode = ({ user, authError }) => {
             const [gameState, setGameState] = React.useState(null);
             const [players, setPlayers] = React.useState([]);
             const [loading, setLoading] = React.useState(true);
@@ -225,6 +225,16 @@
                                     ))}
                                 </div>
                             </div>
+                            
+                            {authError && (
+                                <div className="bg-red-500/10 border border-red-500 text-red-200 p-4 rounded-xl mb-6 text-left text-sm">
+                                    <p className="font-bold">⚠️ Connection Error (Server Blocked)</p>
+                                    <p className="opacity-80 mt-1">
+                                        Google Cloud บล็อกการเชื่อมต่อจากหน้า Preview นี้เนื่องจากคุณตั้งค่าจำกัด Domain ไว้<br/>
+                                        <span className="text-yellow-300 font-bold">วิธีแก้:</span> ไปที่ Google Cloud Console > Credentials > API Key > Application restrictions > เลือก "None" ชั่วคราว
+                                    </p>
+                                </div>
+                            )}
 
                             <button onClick={startGame} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white text-2xl font-bold py-6 rounded-xl shadow-lg transform transition hover:scale-105">
                                 เริ่มเกม (START GAME)
@@ -344,7 +354,7 @@
         // ==========================================
         // 3. STUDENT COMPONENT (Player)
         // ==========================================
-        const StudentMode = ({ user, goHome }) => {
+        const StudentMode = ({ user, goHome, authError }) => {
             const [gameState, setGameState] = React.useState(null);
             const [name, setName] = React.useState('');
             const [joined, setJoined] = React.useState(false);
@@ -380,8 +390,7 @@
                 
                 // Safety check: User must be authenticated
                 if (!user) {
-                    alert("กำลังเชื่อมต่อระบบ กรุณารอสักครู่...");
-                    return;
+                    return; // Error is handled in UI
                 }
 
                 try {
@@ -421,13 +430,26 @@
                         <div className="bg-white p-8 rounded-3xl shadow-lg w-full max-w-sm text-center">
                             <h2 className="text-2xl font-bold text-rose-500 mb-4">เข้าห้องเรียน</h2>
                             <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="ใส่ชื่อของคุณ..." className="w-full bg-gray-100 p-4 rounded-xl mb-4 text-center text-lg outline-none focus:ring-2 focus:ring-rose-400" />
-                            <button 
-                                onClick={joinGame} 
-                                disabled={!user}
-                                className={`w-full text-white font-bold py-4 rounded-xl shadow-lg transition-colors ${user ? 'bg-rose-500 hover:bg-rose-600' : 'bg-gray-400 cursor-not-allowed'}`}
-                            >
-                                {user ? "ยืนยันชื่อ" : "กำลังเชื่อมต่อระบบ..."}
-                            </button>
+                            
+                            {/* ERROR DISPLAY */}
+                            {authError ? (
+                                <button 
+                                    onClick={() => alert("ข้อผิดพลาดจากระบบ (Auth Error):\n" + authError + "\n\nคำแนะนำ: ตรวจสอบการตั้งค่า API Key Restrictions ใน Google Cloud Console (ต้องเพิ่ม URL ของ GitHub Pages ให้ถูกต้อง หรือปิด Restrictions ชั่วคราว)")}
+                                    className="w-full bg-red-500 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-red-600 animate-pulse"
+                                >
+                                    ⚠️ เชื่อมต่อไม่ได้ (คลิกดูสาเหตุ)
+                                </button>
+                            ) : (
+                                <button 
+                                    onClick={joinGame} 
+                                    disabled={!user}
+                                    className={`w-full text-white font-bold py-4 rounded-xl shadow-lg transition-colors ${user ? 'bg-rose-500 hover:bg-rose-600' : 'bg-gray-400 cursor-not-allowed'}`}
+                                >
+                                    {user ? "ยืนยันชื่อ" : "กำลังเชื่อมต่อระบบ..."}
+                                </button>
+                            )}
+                            
+                            <p className="mt-4 text-xs text-gray-400">Status: {user ? "Online ✅" : (authError ? "Error ❌" : "Connecting...")}</p>
                         </div>
                     </div>
                 );
@@ -509,12 +531,35 @@
         // ==========================================
         const App = () => {
             const [user, setUser] = React.useState(null);
+            const [authError, setAuthError] = React.useState(null);
             const [mode, setMode] = React.useState('menu'); 
 
             React.useEffect(() => {
-                const init = async () => { await auth.signInAnonymously(); };
+                const init = async () => { 
+                    try {
+                        await auth.signInAnonymously(); 
+                    } catch (err) {
+                        console.error("Auth Init Error:", err);
+                        // Check for referer blocked error
+                        if (err.message.includes("requests-from-referer")) {
+                            setAuthError("API Key ถูกจำกัดสิทธิ์ (Domain Restricted). โดเมนของหน้าเว็บนี้ไม่ได้รับอนุญาต");
+                        } else {
+                            setAuthError(err.message);
+                        }
+                    }
+                };
                 init();
-                auth.onAuthStateChanged(setUser);
+                
+                const unsub = auth.onAuthStateChanged((u) => {
+                    if (u) {
+                        setUser(u);
+                        setAuthError(null);
+                    }
+                }, (err) => {
+                    setAuthError(err.message);
+                });
+                
+                return () => unsub();
             }, []);
 
             if (mode === 'menu') return (
@@ -524,14 +569,26 @@
                     </div>
                     <h1 className="text-4xl font-bold text-white mb-2">OSCC Live Quiz</h1>
                     <p className="text-slate-400 mb-10">ระบบห้องเรียนตอบคำถาม Real-time (Auto)</p>
+                    
+                    {authError && (
+                        <div className="mb-4 bg-red-500/20 border border-red-500 text-red-200 p-4 rounded-lg text-sm max-w-md mx-auto text-left">
+                            <p className="font-bold mb-2">⚠️ เกิดข้อผิดพลาดการเชื่อมต่อ (Connection Error)</p>
+                            <p className="mb-2">{authError}</p>
+                            <p className="text-xs opacity-80">
+                                <strong>สาเหตุ:</strong> คุณอาจตั้งค่าจำกัด Domain ใน Google Cloud Console ไว้ ทำให้หน้า Preview นี้ใช้งานไม่ได้<br/>
+                                <strong>วิธีแก้:</strong> ไปที่ Google Cloud Console > APIs & Services > Credentials > แก้ไข API Key > เพิ่มโดเมนของหน้านี้ หรือเอาติ๊กถูกช่อง "Website restrictions" ออกชั่วคราว
+                            </p>
+                        </div>
+                    )}
+
                     <div className="flex flex-col gap-4 w-full max-w-sm">
                         <button onClick={() => setMode('teacher')} className="bg-white text-slate-900 p-4 rounded-xl font-bold text-lg hover:bg-slate-100 flex items-center justify-center gap-3"><i className="fa-solid fa-chalkboard-user"></i> โหมดควบคุม (ครู)</button>
                         <button onClick={() => setMode('student')} className="bg-rose-500 text-white p-4 rounded-xl font-bold text-lg hover:bg-rose-600 shadow-lg shadow-rose-900/50 flex items-center justify-center gap-3"><i className="fa-solid fa-gamepad"></i> เข้าเล่น (นักเรียน)</button>
                     </div>
                 </div>
             );
-            if (mode === 'teacher') return <TeacherMode user={user} />;
-            if (mode === 'student') return <StudentMode user={user} goHome={() => setMode('menu')} />;
+            if (mode === 'teacher') return <TeacherMode user={user} authError={authError} />;
+            if (mode === 'student') return <StudentMode user={user} goHome={() => setMode('menu')} authError={authError} />;
             return null;
         };
 
