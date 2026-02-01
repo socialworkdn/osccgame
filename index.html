@@ -24,16 +24,17 @@
         /* Highlight Animation */
         .correct-answer-highlight {
             animation: pulse-green 1s infinite;
-            border-color: #10b981 !important;
-            background-color: #d1fae5 !important;
-            color: #065f46 !important;
+            background-color: #10b981 !important; /* Green-500 */
+            border-color: #059669 !important; /* Green-600 */
+            color: white !important;
             font-weight: bold;
             transform: scale(1.02);
+            box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
         }
         @keyframes pulse-green {
-            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+            0% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+            100% { transform: scale(1); }
         }
     </style>
 
@@ -193,7 +194,7 @@
             React.useEffect(() => {
                 if (gameState?.status === 'playing') {
                     if (gameState.showAnswer) {
-                        setTimeLeft(10); // เวลาเฉลย 10 วินาที
+                        setTimeLeft(5); // เวลาเฉลย 5 วินาที
                     } else {
                         setTimeLeft(15); // เวลาตอบ 15 วินาที
                     }
@@ -207,8 +208,9 @@
                     const timerId = setTimeout(() => setTimeLeft(prev => prev - 1), 1000);
                     return () => clearTimeout(timerId);
                 } else {
+                    // When time reaches 0
                     if (!gameState.showAnswer) {
-                        revealAnswer(); // หมดเวลาตอบ -> เฉลย
+                        revealAnswer(); // หมดเวลาตอบ -> เฉลย (จะเปลี่ยน showAnswer เป็น true)
                     } else {
                         nextQuestion(); // หมดเวลาเฉลย -> ไปข้อถัดไป
                     }
@@ -285,7 +287,7 @@
                                         let bg = "bg-slate-100 text-slate-600";
                                         // Logic สีสำหรับครู
                                         if (gameState.showAnswer) {
-                                            if (i === q.c) bg = "bg-green-100 border-2 border-green-500 text-green-800 correct-answer-highlight"; // เฉลยสีเขียว
+                                            if (i === q.c) bg = "correct-answer-highlight"; // เฉลยสีเขียว
                                             else bg = "bg-slate-200 opacity-40 grayscale";
                                         }
                                         return (
@@ -301,7 +303,7 @@
                             <div className="bg-slate-100 p-6 flex justify-between items-center border-t">
                                 <div className="text-slate-500 text-sm italic">
                                     {gameState.showAnswer 
-                                        ? "เฉลย 10 วินาที... กำลังไปข้อถัดไปอัตโนมัติ" 
+                                        ? "เฉลย 5 วินาที... กำลังไปข้อถัดไปอัตโนมัติ" 
                                         : "กำลังจับเวลาตอบ 15 วินาที..."}
                                 </div>
                                 <div className="flex gap-4">
@@ -498,8 +500,8 @@
                             {q.a.map((opt, i) => {
                                 let statusClass = "bg-white text-slate-700 shadow-sm border-2 border-transparent";
                                 if (gameState.showAnswer) {
-                                    // Highlight ข้อที่ถูกเป็นสีเขียวเสมอ
-                                    if (i === q.c) statusClass = "bg-green-100 border-2 border-green-500 text-green-800 correct-answer-highlight"; 
+                                    // Highlight ข้อที่ถูกเป็นสีเขียวเสมอ (Solid Green)
+                                    if (i === q.c) statusClass = "correct-answer-highlight"; 
                                     else if (i === selected) statusClass = "bg-red-500 text-white border-red-600 opacity-60";
                                     else statusClass = "bg-slate-200 text-slate-400 opacity-40";
                                 } else if (selected !== null) {
@@ -533,7 +535,7 @@
                         <h2 className="text-3xl font-bold mb-2">จบเกมแล้ว!</h2>
                         
                         <div className="bg-white/10 rounded-2xl p-6 mt-6 w-full max-w-xs backdrop-blur-sm border border-white/20 shadow-xl">
-                            {/* ชื่อนักเรียน */}
+                            {/* ชื่อนักเรียนแสดงที่นี่ */}
                             <p className="text-2xl font-bold text-yellow-300 mb-2">{name}</p>
                             <div className="w-full h-px bg-white/20 mb-4"></div>
                             <p className="text-sm opacity-70">คะแนนของคุณ</p>
