@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SW Quiz</title>
+    <title>OSCC Live Classroom</title>
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;800&display=swap" rel="stylesheet">
@@ -15,26 +15,20 @@
         body { font-family: 'Sarabun', sans-serif; background-color: #f0f2f5; overflow-x: hidden; }
         .animate-bounce-short { animation: bounce 0.5s infinite alternate; }
         @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-5px); } }
-        .fade-in { animation: fadeIn 0.5s ease-in; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
         
         /* Timer Bar Animation */
         .timer-progress { transition: width 1s linear; }
         
         /* Highlight Animation */
         .correct-answer-highlight {
-            animation: pulse-green 1s infinite;
             background-color: #10b981 !important; /* Green-500 */
             border-color: #059669 !important; /* Green-600 */
             color: white !important;
             font-weight: bold;
             transform: scale(1.02);
             box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
-        }
-        @keyframes pulse-green {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.03); }
-            100% { transform: scale(1); }
         }
     </style>
 
@@ -194,9 +188,9 @@
             React.useEffect(() => {
                 if (gameState?.status === 'playing') {
                     if (gameState.showAnswer) {
-                        setTimeLeft(5); // เวลาเฉลย 5 วินาที
+                        setTimeLeft(5); // Force 5 seconds for answer
                     } else {
-                        setTimeLeft(15); // เวลาตอบ 15 วินาที
+                        setTimeLeft(15); // 15 seconds for question
                     }
                 }
             }, [gameState?.qIdx, gameState?.showAnswer, gameState?.status]);
@@ -208,11 +202,11 @@
                     const timerId = setTimeout(() => setTimeLeft(prev => prev - 1), 1000);
                     return () => clearTimeout(timerId);
                 } else {
-                    // When time reaches 0
+                    // Time up actions
                     if (!gameState.showAnswer) {
-                        revealAnswer(); // หมดเวลาตอบ -> เฉลย (จะเปลี่ยน showAnswer เป็น true)
+                        revealAnswer(); // 15s ends -> Show Answer
                     } else {
-                        nextQuestion(); // หมดเวลาเฉลย -> ไปข้อถัดไป
+                        nextQuestion(); // 5s ends -> Next Question
                     }
                 }
             }, [timeLeft, gameState]);
@@ -517,11 +511,18 @@
                                 );
                             })}
                         </div>
+                        
+                        {/* ANSWER POPUP (Big Reveal) */}
                         {gameState.showAnswer && (
-                             <div className="p-6 bg-slate-800 text-white text-center animate-bounce-short fixed bottom-0 w-full rounded-t-3xl shadow-2xl z-50 border-t-4 border-green-400">
-                                <div className="text-sm opacity-80 mb-2">เฉลยคำตอบที่ถูกต้อง</div>
-                                <div className="font-bold text-2xl text-green-300">{QUESTIONS[gameState.qIdx].a[QUESTIONS[gameState.qIdx].c]}</div>
-                                <div className="text-xs mt-2 opacity-60">กำลังไปข้อถัดไป...</div>
+                             <div className="fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center p-4 animate-fade-in">
+                                <div className="text-white text-2xl mb-4 font-bold">เฉลย</div>
+                                <div className="bg-white p-8 rounded-3xl w-full max-w-md text-center shadow-2xl">
+                                     <div className="text-slate-500 mb-2 text-lg">คำตอบที่ถูกคือ</div>
+                                     <div className="text-3xl font-black text-green-600 mb-6 leading-tight">
+                                        {QUESTIONS[gameState.qIdx].a[QUESTIONS[gameState.qIdx].c]}
+                                     </div>
+                                     <div className="text-sm text-slate-400 animate-pulse">กำลังไปข้อต่อไปใน 5 วินาที...</div>
+                                </div>
                              </div>
                         )}
                     </div>
@@ -535,14 +536,14 @@
                         <h2 className="text-3xl font-bold mb-2">จบเกมแล้ว!</h2>
                         
                         <div className="bg-white/10 rounded-2xl p-6 mt-6 w-full max-w-xs backdrop-blur-sm border border-white/20 shadow-xl">
-                            {/* ชื่อนักเรียนแสดงที่นี่ */}
-                            <p className="text-2xl font-bold text-yellow-300 mb-2">{name}</p>
+                            <div className="text-white text-xl mb-2">ผู้เล่น:</div>
+                            <div className="text-3xl font-bold text-yellow-300 mb-4 bg-black/20 rounded-lg py-2 px-4">{name}</div>
                             <div className="w-full h-px bg-white/20 mb-4"></div>
                             <p className="text-sm opacity-70">คะแนนของคุณ</p>
                             <div className="text-6xl font-black my-2">{currentScore}</div>
                         </div>
                         
-                        <p className="mt-8 opacity-80 animate-pulse">ดูรายชื่อผู้ชนะได้ที่หน้าจอ</p>
+                        <p className="mt-8 opacity-80 animate-pulse">ดูรายชื่อผู้ชนะได้ที่หน้าจอครู</p>
                     </div>
                 );
             }
@@ -592,8 +593,8 @@
                     <div className="w-20 h-20 bg-rose-500 rounded-full flex items-center justify-center text-4xl text-white mb-6 shadow-lg shadow-rose-500/50">
                         <i className="fa-solid fa-bolt"></i>
                     </div>
-                    <h1 className="text-4xl font-bold text-white mb-2">SW Live Quiz</h1>
-                    <p className="text-slate-400 mb-10">ระบบห้องเรียนตอบคำถาม Real-time</p>
+                    <h1 className="text-4xl font-bold text-white mb-2">OSCC Live Quiz</h1>
+                    <p className="text-slate-400 mb-10">ระบบห้องเรียนตอบคำถาม Real-time (Auto)</p>
                     
                     {authError && (
                         <div className="mb-4 bg-red-500/20 border border-red-500 text-red-200 p-4 rounded-lg text-sm max-w-md mx-auto text-left">
@@ -606,7 +607,7 @@
                     )}
 
                     <div className="flex flex-col gap-4 w-full max-w-sm">
-                        <button onClick={() => setMode('teacher')} className="bg-white text-slate-900 p-4 rounded-xl font-bold text-lg hover:bg-slate-100 flex items-center justify-center gap-3"><i className="fa-solid fa-chalkboard-user"></i> โหมดควบคุม</button>
+                        <button onClick={() => setMode('teacher')} className="bg-white text-slate-900 p-4 rounded-xl font-bold text-lg hover:bg-slate-100 flex items-center justify-center gap-3"><i className="fa-solid fa-chalkboard-user"></i> โหมดควบคุม (ครู)</button>
                         <button onClick={() => setMode('student')} className="bg-rose-500 text-white p-4 rounded-xl font-bold text-lg hover:bg-rose-600 shadow-lg shadow-rose-900/50 flex items-center justify-center gap-3"><i className="fa-solid fa-gamepad"></i> เข้าเล่น (นักเรียน)</button>
                     </div>
                 </div>
