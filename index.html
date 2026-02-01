@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OSCC Live Classroom</title>
+    <title>SW Quiz</title>
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;800&display=swap" rel="stylesheet">
@@ -144,9 +144,11 @@
                 return () => { unsubState(); unsubPlayers(); };
             }, []);
 
-            // Control Actions
+            // Control Actions - FIX: Send ONLY changes, do NOT merge with stale state
             const updateState = async (newData) => {
-                await getGameStateRef().set({ ...gameState, ...newData }, { merge: true });
+                try {
+                    await getGameStateRef().set(newData, { merge: true });
+                } catch(e) { console.error("Update Error", e); }
             };
 
             const resetGame = async () => {
@@ -176,8 +178,8 @@
 
             const startGame = () => updateState({ status: 'playing', qIdx: 0, showAnswer: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
             
-            // เพิ่ม Timestamp เพื่อบังคับ refresh
-            const revealAnswer = () => updateState({ showAnswer: true, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+            // Actions
+            const revealAnswer = () => updateState({ showAnswer: true });
             
             const nextQuestion = () => {
                 if (gameState.qIdx < QUESTIONS.length - 1) {
@@ -187,36 +189,37 @@
                 }
             };
 
-            // Auto Timer Logic (Fix: แยก Effect เพื่อความชัวร์)
+            // --- AUTO TIMER LOGIC (Strict Separation) ---
+            
+            // 1. Reset timer when phase changes (Triggered by Firestore updates)
             React.useEffect(() => {
                 if (gameState?.status === 'playing') {
-                    // ทุกครั้งที่สถานะคำถามเปลี่ยน หรือเปลี่ยนเป็นโหมดเฉลย ให้รีเซ็ตเวลา
                     if (gameState.showAnswer) {
-                        setTimeLeft(5); // เวลาเฉลย 5 วินาที
+                        setTimeLeft(5); // ช่วงเฉลย: 5 วินาที
                     } else {
-                        setTimeLeft(15); // เวลาตอบ 15 วินาที
+                        setTimeLeft(15); // ช่วงถาม: 15 วินาที
                     }
                 }
             }, [gameState?.qIdx, gameState?.showAnswer, gameState?.status]);
 
-            // Countdown Ticker
+            // 2. Ticker (Counts down locally)
             React.useEffect(() => {
-                if (gameState?.status !== 'playing') return;
+                if (gameState?.status !== 'playing' || loading) return;
 
                 if (timeLeft > 0) {
                     const timerId = setTimeout(() => setTimeLeft(prev => prev - 1), 1000);
                     return () => clearTimeout(timerId);
                 } else {
-                    // เมื่อเวลาหมด (timeLeft == 0)
+                    // Time's up! Check CURRENT state to decide next move
                     if (!gameState.showAnswer) {
-                        // ถ้ายังไม่เฉลย -> ให้เฉลย (เข้าสู่ 5 วินาที)
-                        revealAnswer(); 
+                        // ถ้ายังไม่เฉลย -> สั่งเฉลย
+                        revealAnswer();
                     } else {
-                        // ถ้าเฉลยอยู่แล้ว -> ไปข้อต่อไป
-                        nextQuestion(); 
+                        // ถ้าเฉลยแล้ว -> ไปข้อถัดไป
+                        nextQuestion();
                     }
                 }
-            }, [timeLeft, gameState]);
+            }, [timeLeft, gameState?.status, gameState?.showAnswer]); // Dependency ensures we react to state changes correctly
 
 
             if (loading) return <div className="text-center p-10 text-white">Connecting to Firestore...</div>;
@@ -378,19 +381,25 @@
             const [currentScore, setCurrentScore] = React.useState(0);
             const [clientTimer, setClientTimer] = React.useState(15); 
             
+            // Listen to Game State
             React.useEffect(() => {
                 const unsub = getGameStateRef().onSnapshot(doc => {
                     const data = doc.data();
                     if (!data) return;
                     
                     setGameState(prev => {
+                        // Detect Question Change -> Reset for new question
                         if (prev && prev.qIdx !== data.qIdx) {
                             setSelected(null);
                             setClientTimer(15); 
                         }
-                        // Detect transition to showAnswer -> Reset to 5
+                        // Detect Phase Change (Playing -> Show Answer) -> Set timer to 5
                         if (prev && !prev.showAnswer && data.showAnswer) {
                             setClientTimer(5);
+                        }
+                        // Initial Load Handling
+                        if (!prev) {
+                            setClientTimer(data.showAnswer ? 5 : 15);
                         }
                         return data;
                     });
@@ -398,6 +407,7 @@
                 return () => unsub();
             }, []);
 
+            // Client Timer
             React.useEffect(() => {
                 if (gameState?.status === 'playing' && clientTimer > 0) {
                     const timer = setTimeout(() => setClientTimer(prev => prev - 1), 1000);
@@ -523,7 +533,7 @@
                             })}
                         </div>
                         
-                        {/* ANSWER POPUP (Big Reveal) */}
+                        {/* ANSWER POPUP (Big Reveal) with Countdown */}
                         {gameState.showAnswer && (
                              <div className="fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center p-4 animate-fade-in">
                                 <div className="text-white text-2xl mb-4 font-bold">เฉลย</div>
@@ -532,7 +542,12 @@
                                      <div className="text-3xl font-black text-green-600 mb-6 leading-tight">
                                         {QUESTIONS[gameState.qIdx].a[QUESTIONS[gameState.qIdx].c]}
                                      </div>
-                                     <div className="text-sm text-slate-400 animate-pulse">กำลังไปข้อต่อไปใน {clientTimer} วินาที...</div>
+                                     
+                                     {/* Student Countdown Display */}
+                                     <div className="flex items-center justify-center gap-2 mt-4 text-slate-400">
+                                        <div className="w-6 h-6 rounded-full border-2 border-slate-300 flex items-center justify-center text-xs font-bold animate-pulse">{clientTimer}</div>
+                                        <span className="text-sm">กำลังไปข้อต่อไป...</span>
+                                     </div>
                                 </div>
                              </div>
                         )}
@@ -547,14 +562,14 @@
                         <h2 className="text-3xl font-bold mb-2">จบเกมแล้ว!</h2>
                         
                         <div className="bg-white/10 rounded-2xl p-6 mt-6 w-full max-w-xs backdrop-blur-sm border border-white/20 shadow-xl">
-                            {/* ชื่อนักเรียนแสดงที่นี่ */}
-                            <p className="text-2xl font-bold text-yellow-300 mb-2">{name}</p>
+                            <div className="text-white text-xl mb-2">ผู้เล่น:</div>
+                            <div className="text-3xl font-bold text-yellow-300 mb-4 bg-black/20 rounded-lg py-2 px-4">{name}</div>
                             <div className="w-full h-px bg-white/20 mb-4"></div>
                             <p className="text-sm opacity-70">คะแนนของคุณ</p>
                             <div className="text-6xl font-black my-2">{currentScore}</div>
                         </div>
                         
-                        <p className="mt-8 opacity-80 animate-pulse">ดูรายชื่อผู้ชนะได้ที่หน้าจอครู</p>
+                        <p className="mt-8 opacity-80 animate-pulse">ดูรายชื่อผู้ชนะได้ที่หน้าจอ</p>
                     </div>
                 );
             }
@@ -604,8 +619,8 @@
                     <div className="w-20 h-20 bg-rose-500 rounded-full flex items-center justify-center text-4xl text-white mb-6 shadow-lg shadow-rose-500/50">
                         <i className="fa-solid fa-bolt"></i>
                     </div>
-                    <h1 className="text-4xl font-bold text-white mb-2">OSCC Live Quiz</h1>
-                    <p className="text-slate-400 mb-10">ระบบห้องเรียนตอบคำถาม Real-time (Auto)</p>
+                    <h1 className="text-4xl font-bold text-white mb-2">SW Live Quiz</h1>
+                    <p className="text-slate-400 mb-10">ระบบห้องเรียนตอบคำถาม Real-time</p>
                     
                     {authError && (
                         <div className="mb-4 bg-red-500/20 border border-red-500 text-red-200 p-4 rounded-lg text-sm max-w-md mx-auto text-left">
@@ -618,7 +633,7 @@
                     )}
 
                     <div className="flex flex-col gap-4 w-full max-w-sm">
-                        <button onClick={() => setMode('teacher')} className="bg-white text-slate-900 p-4 rounded-xl font-bold text-lg hover:bg-slate-100 flex items-center justify-center gap-3"><i className="fa-solid fa-chalkboard-user"></i> โหมดควบคุม (ครู)</button>
+                        <button onClick={() => setMode('teacher')} className="bg-white text-slate-900 p-4 rounded-xl font-bold text-lg hover:bg-slate-100 flex items-center justify-center gap-3"><i className="fa-solid fa-chalkboard-user"></i> โหมดควบคุม</button>
                         <button onClick={() => setMode('student')} className="bg-rose-500 text-white p-4 rounded-xl font-bold text-lg hover:bg-rose-600 shadow-lg shadow-rose-900/50 flex items-center justify-center gap-3"><i className="fa-solid fa-gamepad"></i> เข้าเล่น (นักเรียน)</button>
                     </div>
                 </div>
