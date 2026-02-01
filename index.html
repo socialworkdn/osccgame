@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SW Quiz</title>
+    <title>OSCC Live Classroom</title>
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;800&display=swap" rel="stylesheet">
@@ -480,7 +480,7 @@
                     <div className="min-h-screen bg-rose-500 p-6 flex flex-col items-center justify-center text-white text-center">
                         <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mb-6 animate-pulse"><i className="fa-solid fa-user-clock text-4xl"></i></div>
                         <h2 className="text-3xl font-bold mb-2">สวัสดี {name}!</h2>
-                        <p>รอกดเริ่มเกมสักครู่...</p>
+                        <p>รอคุณครูกดเริ่มเกมสักครู่...</p>
                     </div>
                 );
             }
@@ -554,7 +554,7 @@
                             <div className="text-6xl font-black my-2">{currentScore}</div>
                         </div>
                         
-                        <p className="mt-8 opacity-80 animate-pulse">ดูรายชื่อผู้ชนะได้ที่หน้าจอ</p>
+                        <p className="mt-8 opacity-80 animate-pulse">ดูรายชื่อผู้ชนะได้ที่หน้าจอครู</p>
                     </div>
                 );
             }
@@ -604,8 +604,8 @@
                     <div className="w-20 h-20 bg-rose-500 rounded-full flex items-center justify-center text-4xl text-white mb-6 shadow-lg shadow-rose-500/50">
                         <i className="fa-solid fa-bolt"></i>
                     </div>
-                    <h1 className="text-4xl font-bold text-white mb-2">SW Live Quiz</h1>
-                    <p className="text-slate-400 mb-10">ระบบห้องเรียนตอบคำถาม Real-time</p>
+                    <h1 className="text-4xl font-bold text-white mb-2">OSCC Live Quiz</h1>
+                    <p className="text-slate-400 mb-10">ระบบห้องเรียนตอบคำถาม Real-time (Auto)</p>
                     
                     {authError && (
                         <div className="mb-4 bg-red-500/20 border border-red-500 text-red-200 p-4 rounded-lg text-sm max-w-md mx-auto text-left">
@@ -618,7 +618,7 @@
                     )}
 
                     <div className="flex flex-col gap-4 w-full max-w-sm">
-                        <button onClick={() => setMode('teacher')} className="bg-white text-slate-900 p-4 rounded-xl font-bold text-lg hover:bg-slate-100 flex items-center justify-center gap-3"><i className="fa-solid fa-chalkboard-user"></i> โหมดควบคุม</button>
+                        <button onClick={() => setMode('teacher')} className="bg-white text-slate-900 p-4 rounded-xl font-bold text-lg hover:bg-slate-100 flex items-center justify-center gap-3"><i className="fa-solid fa-chalkboard-user"></i> โหมดควบคุม (ครู)</button>
                         <button onClick={() => setMode('student')} className="bg-rose-500 text-white p-4 rounded-xl font-bold text-lg hover:bg-rose-600 shadow-lg shadow-rose-900/50 flex items-center justify-center gap-3"><i className="fa-solid fa-gamepad"></i> เข้าเล่น (นักเรียน)</button>
                     </div>
                 </div>
