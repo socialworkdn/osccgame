@@ -126,6 +126,7 @@
             const [players, setPlayers] = React.useState([]);
             const [loading, setLoading] = React.useState(true);
             const [timeLeft, setTimeLeft] = React.useState(15); 
+            const [isProcessing, setIsProcessing] = React.useState(false); // Locking mechanism
 
             // Listen to Game State & Players
             React.useEffect(() => {
@@ -176,50 +177,66 @@
                 }
             };
 
-            const startGame = () => updateState({ status: 'playing', qIdx: 0, showAnswer: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+            const startGame = async () => {
+                if(isProcessing) return;
+                setIsProcessing(true);
+                await updateState({ status: 'playing', qIdx: 0, showAnswer: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+                setIsProcessing(false);
+            };
             
-            // Actions
-            const revealAnswer = () => updateState({ showAnswer: true });
+            const revealAnswer = async () => {
+                if(isProcessing) return;
+                setIsProcessing(true);
+                await updateState({ showAnswer: true, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+                setIsProcessing(false);
+            };
             
-            const nextQuestion = () => {
+            const nextQuestion = async () => {
+                if(isProcessing) return;
+                setIsProcessing(true);
                 if (gameState.qIdx < QUESTIONS.length - 1) {
-                    updateState({ qIdx: gameState.qIdx + 1, showAnswer: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+                    await updateState({ qIdx: gameState.qIdx + 1, showAnswer: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
                 } else {
-                    updateState({ status: 'finished' });
+                    await updateState({ status: 'finished' });
                 }
+                setIsProcessing(false);
             };
 
             // --- AUTO TIMER LOGIC (Strict Separation) ---
             
-            // 1. Reset timer when phase changes (Triggered by Firestore updates)
+            // 1. Reset timer when phase changes
             React.useEffect(() => {
                 if (gameState?.status === 'playing') {
+                    // Unlock processing when state successfully updates
+                    setIsProcessing(false);
+                    
                     if (gameState.showAnswer) {
-                        setTimeLeft(5); // ช่วงเฉลย: 5 วินาที
+                        setTimeLeft(7); // ช่วงเฉลย: 7 วินาที
                     } else {
-                        setTimeLeft(15); // ช่วงถาม: 15 วินาที
+                        setTimeLeft(13); // ช่วงถาม: 13 วินาที
                     }
                 }
             }, [gameState?.qIdx, gameState?.showAnswer, gameState?.status]);
 
-            // 2. Ticker (Counts down locally)
+            // 2. Ticker
             React.useEffect(() => {
                 if (gameState?.status !== 'playing' || loading) return;
+                
+                // Do not tick if we are waiting for a server update
+                if (isProcessing) return;
 
                 if (timeLeft > 0) {
                     const timerId = setTimeout(() => setTimeLeft(prev => prev - 1), 1000);
                     return () => clearTimeout(timerId);
                 } else {
-                    // Time's up! Check CURRENT state to decide next move
+                    // Time's up!
                     if (!gameState.showAnswer) {
-                        // ถ้ายังไม่เฉลย -> สั่งเฉลย
-                        revealAnswer();
+                        revealAnswer(); // 13s ends -> Show Answer
                     } else {
-                        // ถ้าเฉลยแล้ว -> ไปข้อถัดไป
-                        nextQuestion();
+                        nextQuestion(); // 7s ends -> Next Question
                     }
                 }
-            }, [timeLeft, gameState?.status, gameState?.showAnswer]); // Dependency ensures we react to state changes correctly
+            }, [timeLeft, gameState?.status, gameState?.showAnswer, isProcessing]); 
 
 
             if (loading) return <div className="text-center p-10 text-white">Connecting to Firestore...</div>;
@@ -268,14 +285,32 @@
                 return (
                     <div className="min-h-screen bg-slate-100 p-6 flex flex-col items-center justify-center relative">
                         {/* Status Bar */}
-                        <div className={`absolute top-0 left-0 h-2 bg-rose-500 transition-all duration-1000 ease-linear`} style={{ width: `${(timeLeft / (gameState.showAnswer ? 5 : 15)) * 100}%` }}></div>
+                        <div className={`absolute top-0 left-0 h-2 bg-rose-500 transition-all duration-1000 ease-linear`} style={{ width: `${(timeLeft / (gameState.showAnswer ? 7 : 13)) * 100}%` }}></div>
 
-                        <div className="w-full max-w-5xl bg-white rounded-3xl shadow-xl overflow-hidden">
+                        <div className="w-full max-w-5xl bg-white rounded-3xl shadow-xl overflow-hidden relative">
+                            
+                            {/* TEACHER OVERLAY FOR REVEAL PHASE */}
+                            {gameState.showAnswer && (
+                                <div className="absolute inset-0 bg-black/80 z-20 flex flex-col items-center justify-center pointer-events-none p-4">
+                                    <div className="text-white text-3xl font-bold mb-4">เฉลย</div>
+                                    <div className="bg-white px-10 py-8 rounded-3xl shadow-2xl text-center border-b-8 border-green-500 animate-bounce-short w-full max-w-2xl">
+                                        <div className="text-xl text-slate-500 mb-2">คำตอบที่ถูกคือ</div>
+                                        <div className="text-3xl md:text-4xl font-black text-green-600 mb-6 leading-tight">
+                                            {QUESTIONS[gameState.qIdx].a[QUESTIONS[gameState.qIdx].c]}
+                                        </div>
+                                        <div className="flex items-center justify-center gap-2 text-slate-400">
+                                            <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-600">{timeLeft}</div>
+                                            <span>วินาที จะไปข้อถัดไป...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Header */}
                             <div className="bg-slate-800 p-6 flex justify-between items-center text-white">
                                 <h2 className="text-2xl font-bold">ข้อที่ {gameState.qIdx + 1}/{QUESTIONS.length}</h2>
                                 <div className="flex items-center gap-4">
-                                    <div className={`text-3xl font-mono font-bold px-4 py-1 rounded-lg ${gameState.showAnswer ? 'bg-yellow-500 text-black' : 'bg-slate-900 text-rose-400'}`}>
+                                    <div className={`text-3xl font-mono font-bold px-4 py-1 rounded-lg ${gameState.showAnswer ? 'bg-green-500 text-white' : 'bg-slate-900 text-rose-400'}`}>
                                         <i className="fa-regular fa-clock mr-2"></i>{timeLeft}s
                                     </div>
                                     <div className="text-xl opacity-70">| ผู้เล่น: {players.length}</div>
@@ -306,17 +341,17 @@
                             {/* Controls */}
                             <div className="bg-slate-100 p-6 flex justify-between items-center border-t">
                                 <div className="text-slate-500 text-sm italic">
-                                    {gameState.showAnswer 
-                                        ? "เฉลย 5 วินาที... กำลังไปข้อถัดไปอัตโนมัติ" 
-                                        : "กำลังจับเวลาตอบ 15 วินาที..."}
+                                    {isProcessing ? "กำลังเชื่อมต่อ..." : (gameState.showAnswer 
+                                        ? "โหมดเฉลย: ห้ามกดปุ่ม (ระบบ Auto)" 
+                                        : "โหมดถาม: กดข้ามได้หากจำเป็น")}
                                 </div>
                                 <div className="flex gap-4">
                                     {!gameState.showAnswer ? (
-                                        <button onClick={revealAnswer} className="text-slate-500 border border-slate-300 px-4 py-2 rounded-lg hover:bg-slate-200 text-sm">
+                                        <button onClick={revealAnswer} disabled={isProcessing} className="text-slate-500 border border-slate-300 px-4 py-2 rounded-lg hover:bg-slate-200 text-sm disabled:opacity-50">
                                             ข้ามเวลา (เฉลยเลย)
                                         </button>
                                     ) : (
-                                        <button onClick={nextQuestion} className="text-slate-500 border border-slate-300 px-4 py-2 rounded-lg hover:bg-slate-200 text-sm">
+                                        <button onClick={nextQuestion} disabled={isProcessing} className="text-slate-500 border border-slate-300 px-4 py-2 rounded-lg hover:bg-slate-200 text-sm disabled:opacity-50">
                                             ข้ามเวลา (ไปข้อต่อไป)
                                         </button>
                                     )}
@@ -391,15 +426,15 @@
                         // Detect Question Change -> Reset for new question
                         if (prev && prev.qIdx !== data.qIdx) {
                             setSelected(null);
-                            setClientTimer(15); 
+                            setClientTimer(13); 
                         }
-                        // Detect Phase Change (Playing -> Show Answer) -> Set timer to 5
+                        // Detect Phase Change (Playing -> Show Answer) -> Set timer to 7
                         if (prev && !prev.showAnswer && data.showAnswer) {
-                            setClientTimer(5);
+                            setClientTimer(7);
                         }
                         // Initial Load Handling
                         if (!prev) {
-                            setClientTimer(data.showAnswer ? 5 : 15);
+                            setClientTimer(data.showAnswer ? 7 : 13);
                         }
                         return data;
                     });
@@ -490,7 +525,7 @@
                     <div className="min-h-screen bg-rose-500 p-6 flex flex-col items-center justify-center text-white text-center">
                         <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mb-6 animate-pulse"><i className="fa-solid fa-user-clock text-4xl"></i></div>
                         <h2 className="text-3xl font-bold mb-2">สวัสดี {name}!</h2>
-                        <p>รอคุณครูกดเริ่มเกมสักครู่...</p>
+                        <p>รอกดเริ่มเกมสักครู่...</p>
                     </div>
                 );
             }
@@ -503,7 +538,7 @@
                             <span className="bg-rose-100 text-rose-600 px-3 py-1 rounded-full font-bold text-sm">ข้อ {gameState.qIdx + 1}</span>
                             <span className="font-mono font-bold text-rose-600 text-xl">{currentScore} pts</span>
                             {!gameState.showAnswer && (
-                                <div className="absolute bottom-0 left-0 h-1 bg-rose-500 timer-progress" style={{ width: `${(clientTimer / 15) * 100}%` }}></div>
+                                <div className="absolute bottom-0 left-0 h-1 bg-rose-500 timer-progress" style={{ width: `${(clientTimer / 13) * 100}%` }}></div>
                             )}
                         </div>
 
