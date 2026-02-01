@@ -20,6 +20,21 @@
         
         /* Timer Bar Animation */
         .timer-progress { transition: width 1s linear; }
+        
+        /* Highlight Animation */
+        .correct-answer-highlight {
+            animation: pulse-green 1s infinite;
+            border-color: #10b981 !important;
+            background-color: #d1fae5 !important;
+            color: #065f46 !important;
+            font-weight: bold;
+            transform: scale(1.02);
+        }
+        @keyframes pulse-green {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
     </style>
 
     <!-- React & Firebase -->
@@ -178,9 +193,9 @@
             React.useEffect(() => {
                 if (gameState?.status === 'playing') {
                     if (gameState.showAnswer) {
-                        setTimeLeft(10); // เพิ่มเวลาเฉลยเป็น 10 วินาที เพื่อให้นักเรียนได้อ่าน
+                        setTimeLeft(10); // เวลาเฉลย 10 วินาที
                     } else {
-                        setTimeLeft(15); // เวลาตอบ 15 วินาทีเท่าเดิม
+                        setTimeLeft(15); // เวลาตอบ 15 วินาที
                     }
                 }
             }, [gameState?.qIdx, gameState?.showAnswer, gameState?.status]);
@@ -193,9 +208,9 @@
                     return () => clearTimeout(timerId);
                 } else {
                     if (!gameState.showAnswer) {
-                        revealAnswer();
+                        revealAnswer(); // หมดเวลาตอบ -> เฉลย
                     } else {
-                        nextQuestion();
+                        nextQuestion(); // หมดเวลาเฉลย -> ไปข้อถัดไป
                     }
                 }
             }, [timeLeft, gameState]);
@@ -247,14 +262,14 @@
                 return (
                     <div className="min-h-screen bg-slate-100 p-6 flex flex-col items-center justify-center relative">
                         {/* Status Bar */}
-                        <div className={`absolute top-0 left-0 h-2 bg-rose-500 transition-all duration-1000 ease-linear`} style={{ width: `${(timeLeft / (gameState.showAnswer ? 10 : 15)) * 100}%` }}></div>
+                        <div className={`absolute top-0 left-0 h-2 bg-rose-500 transition-all duration-1000 ease-linear`} style={{ width: `${(timeLeft / (gameState.showAnswer ? 5 : 15)) * 100}%` }}></div>
 
                         <div className="w-full max-w-5xl bg-white rounded-3xl shadow-xl overflow-hidden">
                             {/* Header */}
                             <div className="bg-slate-800 p-6 flex justify-between items-center text-white">
                                 <h2 className="text-2xl font-bold">ข้อที่ {gameState.qIdx + 1}/{QUESTIONS.length}</h2>
                                 <div className="flex items-center gap-4">
-                                    <div className="text-3xl font-mono font-bold text-rose-400 bg-slate-900 px-4 py-1 rounded-lg">
+                                    <div className={`text-3xl font-mono font-bold px-4 py-1 rounded-lg ${gameState.showAnswer ? 'bg-yellow-500 text-black' : 'bg-slate-900 text-rose-400'}`}>
                                         <i className="fa-regular fa-clock mr-2"></i>{timeLeft}s
                                     </div>
                                     <div className="text-xl opacity-70">| ผู้เล่น: {players.length}</div>
@@ -268,9 +283,10 @@
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {q.a.map((opt, i) => {
                                         let bg = "bg-slate-100 text-slate-600";
+                                        // Logic สีสำหรับครู
                                         if (gameState.showAnswer) {
-                                            if (i === q.c) bg = "bg-green-500 text-white shadow-lg scale-105 border-green-600";
-                                            else bg = "bg-slate-200 opacity-40";
+                                            if (i === q.c) bg = "bg-green-100 border-2 border-green-500 text-green-800 correct-answer-highlight"; // เฉลยสีเขียว
+                                            else bg = "bg-slate-200 opacity-40 grayscale";
                                         }
                                         return (
                                             <div key={i} className={`p-6 md:p-8 rounded-xl text-xl md:text-2xl font-semibold transition-all duration-300 border-2 border-transparent ${bg}`}>
@@ -285,8 +301,8 @@
                             <div className="bg-slate-100 p-6 flex justify-between items-center border-t">
                                 <div className="text-slate-500 text-sm italic">
                                     {gameState.showAnswer 
-                                        ? "กำลังไปข้อถัดไปอัตโนมัติ..." 
-                                        : "กำลังเฉลยคำตอบอัตโนมัติ..."}
+                                        ? "เฉลย 10 วินาที... กำลังไปข้อถัดไปอัตโนมัติ" 
+                                        : "กำลังจับเวลาตอบ 15 วินาที..."}
                                 </div>
                                 <div className="flex gap-4">
                                     {!gameState.showAnswer ? (
@@ -425,7 +441,7 @@
                 return (
                     <div className="min-h-screen bg-rose-50 p-6 flex flex-col items-center justify-center">
                         <div className="bg-white p-8 rounded-3xl shadow-lg w-full max-w-sm text-center">
-                            <h2 className="text-2xl font-bold text-rose-500 mb-4">เข้า Quiz</h2>
+                            <h2 className="text-2xl font-bold text-rose-500 mb-4">เข้าห้องเรียน</h2>
                             <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="ใส่ชื่อของคุณ..." className="w-full bg-gray-100 p-4 rounded-xl mb-4 text-center text-lg outline-none focus:ring-2 focus:ring-rose-400" />
                             
                             {/* ERROR DISPLAY */}
@@ -457,7 +473,7 @@
                     <div className="min-h-screen bg-rose-500 p-6 flex flex-col items-center justify-center text-white text-center">
                         <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mb-6 animate-pulse"><i className="fa-solid fa-user-clock text-4xl"></i></div>
                         <h2 className="text-3xl font-bold mb-2">สวัสดี {name}!</h2>
-                        <p>รอกดเริ่มเกมสักครู่...</p>
+                        <p>รอคุณครูกดเริ่มเกมสักครู่...</p>
                     </div>
                 );
             }
@@ -482,7 +498,8 @@
                             {q.a.map((opt, i) => {
                                 let statusClass = "bg-white text-slate-700 shadow-sm border-2 border-transparent";
                                 if (gameState.showAnswer) {
-                                    if (i === q.c) statusClass = "bg-green-500 text-white border-green-600";
+                                    // Highlight ข้อที่ถูกเป็นสีเขียวเสมอ
+                                    if (i === q.c) statusClass = "bg-green-100 border-2 border-green-500 text-green-800 correct-answer-highlight"; 
                                     else if (i === selected) statusClass = "bg-red-500 text-white border-red-600 opacity-60";
                                     else statusClass = "bg-slate-200 text-slate-400 opacity-40";
                                 } else if (selected !== null) {
@@ -499,9 +516,10 @@
                             })}
                         </div>
                         {gameState.showAnswer && (
-                             <div className="p-4 bg-slate-800 text-white text-center animate-bounce-short">
-                                <div className="text-sm opacity-80 mb-1">{selected === QUESTIONS[gameState.qIdx].c ? "เยี่ยมมาก! ถูกต้อง" : "ข้อนี้ยังไม่ถูกนะ"}</div>
-                                <div className="font-bold text-lg text-emerald-300">เฉลย: {QUESTIONS[gameState.qIdx].a[QUESTIONS[gameState.qIdx].c]}</div>
+                             <div className="p-6 bg-slate-800 text-white text-center animate-bounce-short fixed bottom-0 w-full rounded-t-3xl shadow-2xl z-50 border-t-4 border-green-400">
+                                <div className="text-sm opacity-80 mb-2">เฉลยคำตอบที่ถูกต้อง</div>
+                                <div className="font-bold text-2xl text-green-300">{QUESTIONS[gameState.qIdx].a[QUESTIONS[gameState.qIdx].c]}</div>
+                                <div className="text-xs mt-2 opacity-60">กำลังไปข้อถัดไป...</div>
                              </div>
                         )}
                     </div>
@@ -513,11 +531,16 @@
                     <div className="min-h-screen bg-purple-600 p-6 flex flex-col items-center justify-center text-white text-center">
                         <i className="fa-solid fa-flag-checkered text-6xl mb-6 text-yellow-300"></i>
                         <h2 className="text-3xl font-bold mb-2">จบเกมแล้ว!</h2>
-                        <div className="bg-white/10 rounded-2xl p-6 mt-6 w-full max-w-xs backdrop-blur-sm border border-white/20">
+                        
+                        <div className="bg-white/10 rounded-2xl p-6 mt-6 w-full max-w-xs backdrop-blur-sm border border-white/20 shadow-xl">
+                            {/* ชื่อนักเรียน */}
+                            <p className="text-2xl font-bold text-yellow-300 mb-2">{name}</p>
+                            <div className="w-full h-px bg-white/20 mb-4"></div>
                             <p className="text-sm opacity-70">คะแนนของคุณ</p>
-                            <div className="text-5xl font-black my-2">{currentScore}</div>
+                            <div className="text-6xl font-black my-2">{currentScore}</div>
                         </div>
-                        <p className="mt-8 opacity-80">ดูรายชื่อผู้ชนะได้ที่หน้าจอ</p>
+                        
+                        <p className="mt-8 opacity-80 animate-pulse">ดูรายชื่อผู้ชนะได้ที่หน้าจอ</p>
                     </div>
                 );
             }
@@ -567,8 +590,8 @@
                     <div className="w-20 h-20 bg-rose-500 rounded-full flex items-center justify-center text-4xl text-white mb-6 shadow-lg shadow-rose-500/50">
                         <i className="fa-solid fa-bolt"></i>
                     </div>
-                    <h1 className="text-4xl font-bold text-white mb-2">SW Quiz</h1>
-                    <p className="text-slate-400 mb-10">ระบบตอบคำถาม Real-time</p>
+                    <h1 className="text-4xl font-bold text-white mb-2">SW Live Quiz</h1>
+                    <p className="text-slate-400 mb-10">ระบบห้องเรียนตอบคำถาม Real-time</p>
                     
                     {authError && (
                         <div className="mb-4 bg-red-500/20 border border-red-500 text-red-200 p-4 rounded-lg text-sm max-w-md mx-auto text-left">
