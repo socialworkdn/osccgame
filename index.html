@@ -175,7 +175,10 @@
             };
 
             const startGame = () => updateState({ status: 'playing', qIdx: 0, showAnswer: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
-            const revealAnswer = () => updateState({ showAnswer: true });
+            
+            // เพิ่ม Timestamp เพื่อบังคับ refresh
+            const revealAnswer = () => updateState({ showAnswer: true, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+            
             const nextQuestion = () => {
                 if (gameState.qIdx < QUESTIONS.length - 1) {
                     updateState({ qIdx: gameState.qIdx + 1, showAnswer: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
@@ -184,17 +187,19 @@
                 }
             };
 
-            // Auto Timer Logic
+            // Auto Timer Logic (Fix: แยก Effect เพื่อความชัวร์)
             React.useEffect(() => {
                 if (gameState?.status === 'playing') {
+                    // ทุกครั้งที่สถานะคำถามเปลี่ยน หรือเปลี่ยนเป็นโหมดเฉลย ให้รีเซ็ตเวลา
                     if (gameState.showAnswer) {
-                        setTimeLeft(5); // Force 5 seconds for answer
+                        setTimeLeft(5); // เวลาเฉลย 5 วินาที
                     } else {
-                        setTimeLeft(15); // 15 seconds for question
+                        setTimeLeft(15); // เวลาตอบ 15 วินาที
                     }
                 }
             }, [gameState?.qIdx, gameState?.showAnswer, gameState?.status]);
 
+            // Countdown Ticker
             React.useEffect(() => {
                 if (gameState?.status !== 'playing') return;
 
@@ -202,11 +207,13 @@
                     const timerId = setTimeout(() => setTimeLeft(prev => prev - 1), 1000);
                     return () => clearTimeout(timerId);
                 } else {
-                    // Time up actions
+                    // เมื่อเวลาหมด (timeLeft == 0)
                     if (!gameState.showAnswer) {
-                        revealAnswer(); // 15s ends -> Show Answer
+                        // ถ้ายังไม่เฉลย -> ให้เฉลย (เข้าสู่ 5 วินาที)
+                        revealAnswer(); 
                     } else {
-                        nextQuestion(); // 5s ends -> Next Question
+                        // ถ้าเฉลยอยู่แล้ว -> ไปข้อต่อไป
+                        nextQuestion(); 
                     }
                 }
             }, [timeLeft, gameState]);
@@ -473,7 +480,7 @@
                     <div className="min-h-screen bg-rose-500 p-6 flex flex-col items-center justify-center text-white text-center">
                         <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mb-6 animate-pulse"><i className="fa-solid fa-user-clock text-4xl"></i></div>
                         <h2 className="text-3xl font-bold mb-2">สวัสดี {name}!</h2>
-                        <p>รอคุณครูกดเริ่มเกมสักครู่...</p>
+                        <p>รอกดเริ่มเกมสักครู่...</p>
                     </div>
                 );
             }
@@ -540,8 +547,8 @@
                         <h2 className="text-3xl font-bold mb-2">จบเกมแล้ว!</h2>
                         
                         <div className="bg-white/10 rounded-2xl p-6 mt-6 w-full max-w-xs backdrop-blur-sm border border-white/20 shadow-xl">
-                            <div className="text-white text-xl mb-2">ผู้เล่น:</div>
-                            <div className="text-3xl font-bold text-yellow-300 mb-4 bg-black/20 rounded-lg py-2 px-4">{name}</div>
+                            {/* ชื่อนักเรียนแสดงที่นี่ */}
+                            <p className="text-2xl font-bold text-yellow-300 mb-2">{name}</p>
                             <div className="w-full h-px bg-white/20 mb-4"></div>
                             <p className="text-sm opacity-70">คะแนนของคุณ</p>
                             <div className="text-6xl font-black my-2">{currentScore}</div>
